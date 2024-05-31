@@ -1,0 +1,24 @@
+---
+title: "Data"
+author: Sylvain Schmitt -
+date: today
+date-format: medium
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+---
+
+All data needed for the analyses and the scripts to retrieve them.
+
+Scripts:
+
+-   
+
+Data:
+
+-   
+
+```{r, comment=""}
+fs::dir_tree()
+```

@@ -1,0 +1,17 @@
+---
+title: "Outputs"
+date: today
+date-format: medium
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+---
+
+All outputs and intermediary files of the analyses:
+
+-   
+
+```{r, comment=""}
+fs::dir_tree()
+```

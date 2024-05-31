@@ -1,0 +1,28 @@
+# Meetings {.unnumbered}
+
+This appendix can be used to take notes from meetings.
+
+## 24/05/23 - Kick-off
+
+*Sylvain, Vincyane*
+
+-   Notes
+    -   lidar \~ light (hobo), tas, hr ground (tomst)
+    -   lidar: aircraft & drone
+    -   microclimate: tomst & hobo, 10 m transects, seedling squares
+    -   3 transects, topo, bottom light, plateau light = 32
+    -   15 minutes for one year
+    -   annual metrics important for the biology of regeneration,
+    -   mean annual seasonal extremes diurnal nocturnal
+    -   metrics distinguish canopy topo
+    -   macro aperture (another research question)
+    -   hobo = light & heap but protection concerns
+    -   check tas hobo tomst link
+-   Big tasks
+    -   Data cleaning
+    -   Spatio-temporal exploration of the data
+    -   Choice and computation of metrics
+-   Tasks
+    -   Vincyane: raw data (400 MB) & additional information, tower data to be streamed, Rmd to be cleaned up for sharing with ideas & literature
+    -   Sylvain: make a repository and tasks by discussing continuously
+    -   Timetable: in a hurry (progress in 2 stages: a first quick result and a second finer result later), 1° \~July

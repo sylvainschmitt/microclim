@@ -1,0 +1,26 @@
+project:
+  type: book
+  output-dir: docs
+
+book:
+  title: "microclim"
+  date: last-modified
+  chapters:
+    - index.qmd
+    - 01_data.qmd
+    - 02_analyses.qmd
+  appendices:
+    - 96_literature.qmd
+    - 97_meeting.qmd
+    - 98_contributing.qmd
+    - 99_references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+    code-fold: true
+    number-depth: -1
+
+editor: visual
