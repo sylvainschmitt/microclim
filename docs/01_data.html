@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -162,7 +196,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#section" id="toc-section" class="nav-link active" data-scroll-target="#section"></a></li>
+  <li><a href="#tomst-infos" id="toc-tomst-infos" class="nav-link active" data-scroll-target="#tomst-infos">Tomst infos</a></li>
+  <li><a href="#guyaflux" id="toc-guyaflux" class="nav-link" data-scroll-target="#guyaflux">Guyaflux</a></li>
+  <li><a href="#granulometry" id="toc-granulometry" class="nav-link" data-scroll-target="#granulometry">Granulometry</a></li>
+  <li><a href="#tomst-calibration" id="toc-tomst-calibration" class="nav-link" data-scroll-target="#tomst-calibration">Tomst calibration</a></li>
+  <li><a href="#tomst-data" id="toc-tomst-data" class="nav-link" data-scroll-target="#tomst-data">Tomst data</a></li>
   </ul>
 </nav>
     </div>
@@ -187,8 +225,142 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 <p>Data preparation.</p>
-<section id="section" class="level2">
-<h2 class="anchored" data-anchor-id="section"></h2>
+<section id="tomst-infos" class="level2">
+<h2 class="anchored" data-anchor-id="tomst-infos">Tomst infos</h2>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>nouragues <span class="ot">&lt;-</span> <span class="fu">vroom</span>(<span class="st">"data/HOBO_Tomst_environment/Tomst sensors - Nouragues - Data.csv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">tomst_id =</span> tomstid, <span class="at">tomst_sensornum =</span> tomstsensornum, </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">light =</span> lighthabitat, <span class="at">topography =</span> topohabitat,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">layon =</span> layonedge, <span class="at">date =</span> fielddate, <span class="at">closest_trees =</span> neartreenum, </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">gps =</span> gpsloc, <span class="at">after_gap =</span> afterthegap) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">closest_trees =</span> <span class="fu">as.character</span>(closest_trees)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gather</span>(info_date, info, <span class="fu">all_of</span>(<span class="fu">starts_with</span>(<span class="st">"material_info"</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">info_date =</span> <span class="fu">gsub</span>(<span class="st">"material_info_"</span>, <span class="st">""</span>, info_date)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(date, <span class="at">format =</span> <span class="st">"%d-%m-%Y"</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">info_date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(info_date, <span class="at">format =</span> <span class="st">"%d_%m_%Y"</span>)))</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>paracou <span class="ot">&lt;-</span> <span class="fu">vroom</span>(<span class="st">"data/HOBO_Tomst_environment/Tomst-HOBO sensors - Paracou - Data.csv"</span>, </span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                 <span class="at">n_max =</span> <span class="dv">32</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="st">`</span><span class="at">...1</span><span class="st">`</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">neartreenum =</span> <span class="fu">paste0</span>(treenum1, <span class="st">":"</span>, dtree1, <span class="st">";"</span>, </span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>                              treenum2, <span class="st">":"</span>, dtree2, <span class="st">";"</span>, treenum3, <span class="st">":"</span>, dtree3, <span class="st">";"</span>),</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>         <span class="at">gpsloc =</span> <span class="cn">NA</span>, <span class="at">afterthegap =</span> <span class="cn">NA</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>treenum1, <span class="sc">-</span>treenum2, <span class="sc">-</span>treenum3, <span class="sc">-</span>dtree1, <span class="sc">-</span>dtree2, <span class="sc">-</span>dtree3,</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>         <span class="sc">-</span>hobo_material_info_16_10_23, <span class="sc">-</span>hobo_material_info_06_05_24, <span class="sc">-</span>hoboid) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">tomst_id =</span> tomstid, <span class="at">tomst_sensornum =</span> tomstsensornum, </span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>         <span class="at">light =</span> lighthabitat, <span class="at">topography =</span> topohabitat,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>         <span class="at">layon =</span> layonedge, <span class="at">date =</span> fielddate, <span class="at">closest_trees =</span> neartreenum,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>         <span class="at">gps =</span> gpsloc, <span class="at">after_gap =</span> afterthegap) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gather</span>(info_date, info, <span class="fu">all_of</span>(<span class="fu">starts_with</span>(<span class="st">"tomst_material_info_"</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">info_date =</span> <span class="fu">gsub</span>(<span class="st">"tomst_material_info_"</span>, <span class="st">""</span>, info_date)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(date, <span class="at">format =</span> <span class="st">"%d-%m-%Y"</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">info_date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(info_date, <span class="at">format =</span> <span class="st">"%d_%m_%Y"</span>)))</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">bind_rows</span>(nouragues, paracou) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_tsv</span>(<span class="st">"outputs/tomst_infos.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_tsv</span>(<span class="st">"outputs/tomst_infos.tsv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(site, light, topography) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">N =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(light, topography, <span class="at">size =</span> N, <span class="at">label =</span> N)) <span class="sc">+</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> site) <span class="sc">+</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.title =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="01_data_files/figure-html/infosfig-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Caption.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Variables:</p>
+<ul>
+<li><strong>site</strong>: Nouragues or Paracou</li>
+<li><strong>plot</strong>: Petit Plateau or P16</li>
+<li><strong>subplot</strong>: subplot number</li>
+<li><strong>tomst_id</strong>: tomst ID</li>
+<li><strong>tomst_sensornum</strong>: ?</li>
+<li><strong>transect</strong>: gap or topography effect</li>
+<li><strong>light:</strong> gap type</li>
+<li><strong>topography</strong>: topography type</li>
+<li><strong>layon</strong>: is it near the layon</li>
+<li><strong>date</strong>: installation date?</li>
+<li><strong>operator</strong>: Vincyane or Jérôme</li>
+<li><strong>closest_trees</strong>: closest tree number in Nouragues or the three closest tree numbers and distances for Paracou (number:distance)</li>
+<li><strong>gps</strong>: gps coordinates in Nouragues</li>
+<li><strong>after_gap</strong>: ?</li>
+<li><strong>info_date</strong>: date for the information</li>
+<li><strong>info</strong>: information on the tomst</li>
+</ul>
+</section>
+<section id="guyaflux" class="level2">
+<h2 class="anchored" data-anchor-id="guyaflux">Guyaflux</h2>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>readxl<span class="sc">::</span><span class="fu">read_excel</span>(<span class="st">"data/TourAFlux-2023-2024.xlsx"</span>, </span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">sheet =</span> <span class="st">"Gx meteo_2023-2024"</span>,</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">col_types =</span> <span class="fu">c</span>(<span class="st">"date"</span>, <span class="fu">rep</span>(<span class="st">"numeric"</span>, <span class="dv">29</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">tas_55 =</span> <span class="st">`</span><span class="at">temp(55)</span><span class="st">`</span>, <span class="at">hr_55 =</span> <span class="st">`</span><span class="at">hr(55)</span><span class="st">`</span>, <span class="at">tas_2 =</span> <span class="st">`</span><span class="at">temp(2,0)</span><span class="st">`</span>, <span class="at">hr_2 =</span> <span class="st">`</span><span class="at">hr(2,0)</span><span class="st">`</span>, </span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">ts_0.1 =</span> t_avg_10cm, <span class="at">swc_0.1 =</span> vwc_avg_10cm, <span class="at">snet =</span> rg, <span class="at">ws =</span> <span class="st">`</span><span class="at">vit vent</span><span class="st">`</span>, <span class="at">pr =</span> pluie) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(date, tas_55, hr_55, tas_2, hr_2, ts_0<span class="fl">.1</span>, swc_0<span class="fl">.1</span>, snet, ws, pr) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(date <span class="sc">&gt;=</span> <span class="st">"2023-04-01 00:00:00"</span>, date <span class="sc">&lt;</span> <span class="st">"2024-03-31 24:00:00"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_tsv</span>(<span class="st">"outputs/guyaflux.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_tsv</span>(<span class="st">"outputs/guyaflux.tsv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gather</span>(variable, value, <span class="sc">-</span>date) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(date, value)) <span class="sc">+</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">col =</span> <span class="st">"lightgrey"</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>() <span class="sc">+</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> variable, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="01_data_files/figure-html/guyafluxfig-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Caption.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Variables:</p>
+<ul>
+<li><strong>date</strong>: date time every half hour</li>
+<li><strong>hr_2</strong>: air humidity at 2 metre heigh (%)</li>
+<li><strong>hr_55</strong>: air humidity at 55 metre heigh (%)</li>
+<li><strong>pr</strong>: precipitation (mm)</li>
+<li><strong>snet</strong>: net solar irradiation (W/m2?)</li>
+<li><strong>swc_0.1</strong>: 10-cm depth soil water content (m3/m3), also available deeper</li>
+<li><strong>tas_2</strong>: air temperature at 2 metre heigh (°C)</li>
+<li><strong>tas_55</strong>: air temperature at 55 metre heigh (°C)</li>
+<li><strong>ts_0.1</strong>: 10-cm depth soil temperature (°C)</li>
+<li><strong>ws</strong>: wind speed (m/s2)</li>
+</ul>
+</section>
+<section id="granulometry" class="level2">
+<h2 class="anchored" data-anchor-id="granulometry">Granulometry</h2>
+</section>
+<section id="tomst-calibration" class="level2">
+<h2 class="anchored" data-anchor-id="tomst-calibration">Tomst calibration</h2>
+</section>
+<section id="tomst-data" class="level2">
+<h2 class="anchored" data-anchor-id="tomst-data">Tomst data</h2>
 
 
 </section>

@@ -1,10 +1,126 @@
 ```{r setup}
 #| message: false
 #| include: false
+library(vroom)
+library(tidyverse)
 ```
 
 # Data
 
 Data preparation.
 
-## 
+## Tomst infos
+
+```{r prepinfos}
+#| eval: false
+nouragues <- vroom("data/HOBO_Tomst_environment/Tomst sensors - Nouragues - Data.csv") %>% 
+  rename_all(tolower) %>% 
+  rename(tomst_id = tomstid, tomst_sensornum = tomstsensornum, 
+         light = lighthabitat, topography = topohabitat,
+         layon = layonedge, date = fielddate, closest_trees = neartreenum, 
+         gps = gpsloc, after_gap = afterthegap) %>% 
+  mutate(closest_trees = as.character(closest_trees)) %>% 
+  gather(info_date, info, all_of(starts_with("material_info"))) %>% 
+  mutate(info_date = gsub("material_info_", "", info_date)) %>% 
+  mutate(date = as_date(as.POSIXct(date, format = "%d-%m-%Y"))) %>% 
+  mutate(info_date = as_date(as.POSIXct(info_date, format = "%d_%m_%Y")))
+paracou <- vroom("data/HOBO_Tomst_environment/Tomst-HOBO sensors - Paracou - Data.csv", 
+                 n_max = 32) %>% 
+  select(-`...1`) %>% 
+  rename_all(tolower) %>% 
+  mutate(neartreenum = paste0(treenum1, ":", dtree1, ";", 
+                              treenum2, ":", dtree2, ";", treenum3, ":", dtree3, ";"),
+         gpsloc = NA, afterthegap = NA) %>% 
+  select(-treenum1, -treenum2, -treenum3, -dtree1, -dtree2, -dtree3,
+         -hobo_material_info_16_10_23, -hobo_material_info_06_05_24, -hoboid) %>% 
+  rename(tomst_id = tomstid, tomst_sensornum = tomstsensornum, 
+         light = lighthabitat, topography = topohabitat,
+         layon = layonedge, date = fielddate, closest_trees = neartreenum,
+         gps = gpsloc, after_gap = afterthegap) %>% 
+  gather(info_date, info, all_of(starts_with("tomst_material_info_"))) %>% 
+  mutate(info_date = gsub("tomst_material_info_", "", info_date)) %>% 
+  mutate(date = as_date(as.POSIXct(date, format = "%d-%m-%Y"))) %>% 
+  mutate(info_date = as_date(as.POSIXct(info_date, format = "%d_%m_%Y")))
+bind_rows(nouragues, paracou) %>% 
+  write_tsv("outputs/tomst_infos.tsv")
+```
+
+```{r infosfig}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+read_tsv("outputs/tomst_infos.tsv") %>% 
+  group_by(site, light, topography) %>% 
+  summarise(N = n()) %>% 
+  ggplot(aes(light, topography, size = N, label = N)) +
+  geom_point() +
+  facet_wrap(~ site) +
+  theme_bw() +
+  theme(axis.title = element_blank())
+```
+
+Variables:
+
+-   **site**: Nouragues or Paracou
+-   **plot**: Petit Plateau or P16
+-   **subplot**: subplot number
+-   **tomst_id**: tomst ID
+-   **tomst_sensornum**: ?
+-   **transect**: gap or topography effect
+-   **light:** gap type
+-   **topography**: topography type
+-   **layon**: is it near the layon
+-   **date**: installation date?
+-   **operator**: Vincyane or Jérôme
+-   **closest_trees**: closest tree number in Nouragues or the three closest tree numbers and distances for Paracou (number:distance)
+-   **gps**: gps coordinates in Nouragues
+-   **after_gap**: ?
+-   **info_date**: date for the information
+-   **info**: information on the tomst
+
+## Guyaflux
+
+```{r prepguyaflux}
+#| eval: false
+readxl::read_excel("data/TourAFlux-2023-2024.xlsx", 
+                               sheet = "Gx meteo_2023-2024",
+                               col_types = c("date", rep("numeric", 29))) %>% 
+  rename_all(tolower) %>% 
+  rename(tas_55 = `temp(55)`, hr_55 = `hr(55)`, tas_2 = `temp(2,0)`, hr_2 = `hr(2,0)`, 
+         ts_0.1 = t_avg_10cm, swc_0.1 = vwc_avg_10cm, snet = rg, ws = `vit vent`, pr = pluie) %>% 
+  select(date, tas_55, hr_55, tas_2, hr_2, ts_0.1, swc_0.1, snet, ws, pr) %>% 
+  filter(date >= "2023-04-01 00:00:00", date < "2024-03-31 24:00:00") %>% 
+  write_tsv("outputs/guyaflux.tsv")
+```
+
+```{r guyafluxfig}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+read_tsv("outputs/guyaflux.tsv") %>% 
+  gather(variable, value, -date) %>% 
+  ggplot(aes(date, value)) +
+  geom_line(col = "lightgrey", alpha = 0.5) +
+  geom_smooth() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw()
+```
+
+Variables:
+
+-   **date**: date time every half hour
+-   **hr_2**: air humidity at 2 metre heigh (%)
+-   **hr_55**: air humidity at 55 metre heigh (%)
+-   **pr**: precipitation (mm)
+-   **snet**: net solar irradiation (W/m2?)
+-   **swc_0.1**: 10-cm depth soil water content (m3/m3), also available deeper
+-   **tas_2**: air temperature at 2 metre heigh (°C)
+-   **tas_55**: air temperature at 55 metre heigh (°C)
+-   **ts_0.1**: 10-cm depth soil temperature (°C)
+-   **ws**: wind speed (m/s2)
+
+## Granulometry
+
+## Tomst calibration
+
+## Tomst data
