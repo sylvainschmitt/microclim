@@ -259,7 +259,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(date, <span class="at">format =</span> <span class="st">"%d-%m-%Y"</span>))) <span class="sc">%&gt;%</span> </span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">info_date =</span> <span class="fu">as_date</span>(<span class="fu">as.POSIXct</span>(info_date, <span class="at">format =</span> <span class="st">"%d_%m_%Y"</span>)))</span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="fu">bind_rows</span>(nouragues, paracou) <span class="sc">%&gt;%</span> </span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_tsv</span>(<span class="st">"outputs/tomst_infos.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">light =</span> <span class="fu">recode</span>(light, <span class="st">"Sunfleck"</span> <span class="ot">=</span> <span class="st">"Understory"</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_tsv</span>(<span class="st">"outputs/tomst_infos.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <div class="cell">
@@ -289,16 +290,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>plot</strong>: Petit Plateau or P16</li>
 <li><strong>subplot</strong>: subplot number</li>
 <li><strong>tomst_id</strong>: tomst ID</li>
-<li><strong>tomst_sensornum</strong>: ?</li>
+<li><strong>tomst_sensornum</strong>: tomst manufacturer ID</li>
 <li><strong>transect</strong>: gap or topography effect</li>
 <li><strong>light:</strong> gap type</li>
 <li><strong>topography</strong>: topography type</li>
 <li><strong>layon</strong>: is it near the layon</li>
-<li><strong>date</strong>: installation date?</li>
+<li><strong>date</strong>: installation date</li>
 <li><strong>operator</strong>: Vincyane or Jérôme</li>
 <li><strong>closest_trees</strong>: closest tree number in Nouragues or the three closest tree numbers and distances for Paracou (number:distance)</li>
 <li><strong>gps</strong>: gps coordinates in Nouragues</li>
-<li><strong>after_gap</strong>: ?</li>
+<li><strong>after_gap</strong>: before of after the Nouragues’ gap</li>
 <li><strong>info_date</strong>: date for the information</li>
 <li><strong>info</strong>: information on the tomst</li>
 </ul>
@@ -355,6 +356,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="granulometry" class="level2">
 <h2 class="anchored" data-anchor-id="granulometry">Granulometry</h2>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>nouragues <span class="ot">&lt;-</span> <span class="fu">vroom</span>(<span class="st">"data/Tomst_humidity_granulo_parameters/Nouragues_Tomst_humidity_granulo_parameters.csv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="st">"...1"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">site =</span> <span class="st">"Nouragues"</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>paracou <span class="ot">&lt;-</span> <span class="fu">vroom</span>(<span class="st">"data/Tomst_humidity_granulo_parameters/Paracou_Tomst_humidity_granulo_parameters.csv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span><span class="st">"...1"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">site =</span> <span class="st">"Paracou"</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="fu">bind_rows</span>(nouragues, paracou) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">clay =</span> argiles, <span class="at">sand =</span> sables, <span class="at">silt =</span> limons) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>sum_st) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_tsv</span>(<span class="st">"outputs/granulo.tsv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">read_tsv</span>(<span class="st">"outputs/granulo.tsv"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gather</span>(variable, value, <span class="sc">-</span>topography, <span class="sc">-</span>site) <span class="sc">%&gt;%</span> </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(site, value, <span class="at">fill =</span> topography)) <span class="sc">+</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> variable, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"bottom"</span>, <span class="at">axis.title =</span> <span class="fu">element_blank</span>())</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="01_data_files/figure-html/granulofig-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Caption.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Variables:</p>
+<ul>
+<li><strong>site</strong>: Paracou or Nouragues</li>
+<li><strong>topography</strong>: topography type</li>
+<li><strong>silt, clay, sand</strong>: silt, clay, sand content (%)</li>
+<li><strong>bulkdensity</strong>: bulk density (g/cm3)</li>
+<li><strong>a</strong>, <strong>b</strong>, <strong>c</strong>: coefficient to compute the volumetric moisture content (%) as <em>theta=ax^2+bx+c</em></li>
+</ul>
 </section>
 <section id="tomst-calibration" class="level2">
 <h2 class="anchored" data-anchor-id="tomst-calibration">Tomst calibration</h2>

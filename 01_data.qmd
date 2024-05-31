@@ -42,6 +42,7 @@ paracou <- vroom("data/HOBO_Tomst_environment/Tomst-HOBO sensors - Paracou - Dat
   mutate(date = as_date(as.POSIXct(date, format = "%d-%m-%Y"))) %>% 
   mutate(info_date = as_date(as.POSIXct(info_date, format = "%d_%m_%Y")))
 bind_rows(nouragues, paracou) %>% 
+  mutate(light = recode(light, "Sunfleck" = "Understory")) %>% 
   write_tsv("outputs/tomst_infos.tsv")
 ```
 
@@ -65,16 +66,16 @@ Variables:
 -   **plot**: Petit Plateau or P16
 -   **subplot**: subplot number
 -   **tomst_id**: tomst ID
--   **tomst_sensornum**: ?
+-   **tomst_sensornum**: tomst manufacturer ID
 -   **transect**: gap or topography effect
 -   **light:** gap type
 -   **topography**: topography type
 -   **layon**: is it near the layon
--   **date**: installation date?
+-   **date**: installation date
 -   **operator**: Vincyane or Jérôme
 -   **closest_trees**: closest tree number in Nouragues or the three closest tree numbers and distances for Paracou (number:distance)
 -   **gps**: gps coordinates in Nouragues
--   **after_gap**: ?
+-   **after_gap**: before of after the Nouragues' gap
 -   **info_date**: date for the information
 -   **info**: information on the tomst
 
@@ -120,6 +121,43 @@ Variables:
 -   **ws**: wind speed (m/s2)
 
 ## Granulometry
+
+```{r prepgranulo}
+#| eval: false
+nouragues <- vroom("data/Tomst_humidity_granulo_parameters/Nouragues_Tomst_humidity_granulo_parameters.csv") %>% 
+  rename_all(tolower) %>% 
+  select(-"...1") %>% 
+  mutate(site = "Nouragues")
+paracou <- vroom("data/Tomst_humidity_granulo_parameters/Paracou_Tomst_humidity_granulo_parameters.csv") %>% 
+  rename_all(tolower) %>% 
+  select(-"...1") %>% 
+  mutate(site = "Paracou")
+bind_rows(nouragues, paracou) %>% 
+  rename(clay = argiles, sand = sables, silt = limons) %>% 
+  select(-sum_st) %>% 
+  write_tsv("outputs/granulo.tsv")
+```
+
+```{r granulofig}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+read_tsv("outputs/granulo.tsv") %>% 
+  gather(variable, value, -topography, -site) %>% 
+  ggplot(aes(site, value, fill = topography)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "bottom", axis.title = element_blank())
+```
+
+Variables:
+
+-   **site**: Paracou or Nouragues
+-   **topography**: topography type
+-   **silt, clay, sand**: silt, clay, sand content (%)
+-   **bulkdensity**: bulk density (g/cm3)
+-   **a**, **b**, **c**: coefficient to compute the volumetric moisture content (%) as *theta=ax\^2+bx+c*
 
 ## Tomst calibration
 
