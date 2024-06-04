@@ -8,7 +8,10 @@ book:
   chapters:
     - index.qmd
     - 01_data.qmd
-    - 02_analyses.qmd
+    - 02_calibration.qmd
+    - 03_cleaning.qmd
+    - 04_raw.qmd
+    - 05_indices.qmd
   appendices:
     - 96_literature.qmd
     - 97_meeting.qmd

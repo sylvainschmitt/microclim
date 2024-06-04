@@ -5,11 +5,35 @@ library(vroom)
 library(tidyverse)
 ```
 
-# Data
+# Data {.unnumbered}
 
 Data preparation.
 
+## General infos
+
+2 sites:
+
+-   Paracou: to compare with LiDAR data
+
+-   Nouragues: because the hydrology is potentially different.
+
+Location of sensors: transects covering the gradients: - topographical (Paracou: 22, Nouragues: 10) - and forest canopy openness (10 at each site)
+
+Distance between sensors: 10 m Distance to HOBO sensor: minimum 1 m (to avoid ground disturbance caused by HOBO stakes)
+
+Study duration: from 04/01/2023 00:00:00 to 03/31/2024 24:00:00 (1 year)
+
 ## Tomst infos
+
+Model: Tomst TMS-4
+
+Website: <https://tomst.com/web/en/systems/tms/tms-4/>
+
+Time resolution: 15 minutes
+
+Integrated protection against direct light and rain (shield)
+
+Evaluation: @maclean2021
 
 ```{r prepinfos}
 #| eval: false
@@ -159,64 +183,9 @@ Variables:
 -   **bulkdensity**: bulk density (g/cm3)
 -   **a**, **b**, **c**: coefficient to compute the volumetric moisture content (%) as *theta=ax\^2+bx+c*
 
-## Tomst calibration
-
-```{r prepcalib}
-#| eval: false
-files <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = TRUE)
-names(files) <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = FALSE)
-files %>% 
-  lapply(vroom,
-         col_select = 2:7,
-         col_types = c("c", rep("d", 5)), 
-         col_names = F,
-         locale = locale(decimal_mark = ",")) %>% 
-  bind_rows(.id = "file") %>% 
-  mutate(X2 = gsub(".", "-", X2, fixed = TRUE)) %>% 
-  mutate(X2 = as.POSIXct(X2)) %>% 
-  mutate(X2 = as_datetime(X2)) %>% 
-  rename(date = X2, tz = X3, t_soil = X4, t_surface = X5, t_air = X6, moisture = X7) %>% 
-  separate(file, c("data", "tomst_sensornum"), convert = T) %>% 
-  select(-data) %>% 
-  mutate(date = date - 3*60*60) %>% # UTC-3
-  mutate(site = "Nouragues") %>% 
-  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
-              select(tomst_sensornum, site, topography)) %>% 
-  left_join(read_tsv("outputs/granulo.tsv") %>% 
-              select(site, topography, a, b, c)) %>% 
-  mutate(volumetric_moisture = a*moisture^2 + b*moisture + c) %>% 
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, volumetric_moisture) %>% 
-  write_tsv("outputs/tomst_calib.tsv")
-```
-
-```{r calibfig}
-#| message: false
-#| warning: false
-#| fig-cap: "Caption."
-read_tsv("outputs/tomst_calib.tsv") %>% 
-  gather(variable, value, -tomst_sensornum, -date, -site) %>% 
-  filter(tomst_sensornum %in% c(94244901, 94244902)) %>% 
-  ggplot(aes(date, value, col = as.character(tomst_sensornum))) +
-  geom_line() +
-  facet_wrap(~ variable, scales = "free_y") +
-  theme_bw() +
-  theme(legend.position = "bottom", axis.title = element_blank()) +
-  scale_color_discrete("")
-```
-
-Variables:
-
--   **site**: Paracou or Nouragues
--   **date**: date time every 15 minutes
--   **tomst_sensornum**: tomst manufacturer ID
--   **t_soil**: temperature soil (°C), **to precise**
--   **t_surface**: temperature surface (°C), **to precise**
--   **t_air**: temperature air (°C), **to precise**
--   Other variables could be kept after junction (topography, light, etc for subsequent analyses)
-
 ## Tomst data
 
-```{r prepdata}
+```{r prepall}
 #| eval: false
 files <- list.files("data/Nouragues_2024_02_22", pattern = "data", full.names = TRUE)
 names(files) <- list.files("data/Nouragues_2024_02_22", pattern = "data", full.names = FALSE)
@@ -239,8 +208,8 @@ nouragues <- files %>%
               select(tomst_sensornum, site, topography)) %>% 
   left_join(read_tsv("outputs/granulo.tsv") %>% 
               select(site, topography, a, b, c)) %>% 
-  mutate(volumetric_moisture = a*moisture^2 + b*moisture + c) %>% 
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, volumetric_moisture)
+  mutate(swc = a*moisture^2 + b*moisture + c) %>% 
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc)
 files <- list.files("data/Paracou_2024_05_06", pattern = "data", full.names = TRUE)
 names(files) <- list.files("data/Paracou_2024_05_06", pattern = "data", full.names = FALSE)
 paracou <- files %>% 
@@ -257,25 +226,50 @@ paracou <- files %>%
   separate(file, c("data", "tomst_sensornum"), convert = T) %>% 
   select(-data) %>% 
   mutate(date = date - 3*60*60) %>% # UTC-3
-  # mutate(date = date + years(2)) %>% 
   mutate(site = "Paracou") %>% 
   left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
               select(tomst_sensornum, site, topography)) %>% 
   left_join(read_tsv("outputs/granulo.tsv") %>% 
               select(site, topography, a, b, c)) %>% 
-  mutate(volumetric_moisture = a*moisture^2 + b*moisture + c) %>% # issue with volumetric_moisture
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, volumetric_moisture)
+  mutate(swc = a*moisture^2 + b*moisture + c) %>%
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc)
 bind_rows(nouragues, paracou) %>% 
-  write_tsv("outputs/tomst_data.tsv")
+  write_tsv("outputs/tomst_all.tsv")
 ```
 
-```{r datafig}
+Variables:
+
+-   **site**: Paracou or Nouragues
+-   **date**: date time every 15 minutes
+-   **tomst_sensornum**: tomst manufacturer ID
+-   **t_soil**: temperature soil (°C), 8-cm below ground
+-   **t_surface**: temperature surface (°C), just above ground
+-   **t_air**: temperature air (°C), 15-cm above ground
+-   **swc**: soil water content or volumetric moisture (%), 14-cm depth indirect electrical measurement
+-   Other variables could be kept after junction (topography, light, etc for subsequent analyses)
+
+### Calibration office
+
+Calibration of the temperature using data taken over the period in the office (before the installation date)
+
+```{r prepcalibo}
+#| eval: false
+vroom("outputs/tomst_all.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+              select(tomst_sensornum, date) %>% 
+              rename(field_date = date)) %>% 
+  filter(date < field_date) %>% 
+  select(-field_date, -swc) %>% 
+  write_tsv("outputs/tomst_calib_office.tsv")
+```
+
+```{r calibofig}
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-vroom("outputs/tomst_data.tsv") %>% 
+vroom("outputs/tomst_calib_office.tsv") %>% 
+  filter(tomst_sensornum %in% c(94244901, 94244930)) %>% 
   gather(variable, value, -tomst_sensornum, -date, -site) %>% 
-  filter(tomst_sensornum %in% c(94244901, 94223164)) %>% 
   ggplot(aes(date, value, col = paste(site, tomst_sensornum))) +
   geom_line() +
   facet_wrap(~ variable, scales = "free_y") +
@@ -284,12 +278,77 @@ vroom("outputs/tomst_data.tsv") %>%
   scale_color_discrete("")
 ```
 
-Variables:
+### Calibration Nouragues
 
--   **site**: Paracou or Nouragues
--   **date**: date time every 15 minutes
--   **tomst_sensornum**: tomst manufacturer ID
--   **t_soil**: temperature soil (°C), **to precise**
--   **t_surface**: temperature surface (°C), **to precise**
--   **t_air**: temperature air (°C), **to precise**
--   Other variables could be kept after junction (topography, light, etc for subsequent analyses)
+Calibration of humidity with data taken at Nouragues when the sensors were all planted in the same place (2023-02-19 12:00:00 to 2023-02-22 16:45:00)
+
+```{r prepcalibn}
+#| eval: false
+files <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = TRUE)
+names(files) <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = FALSE)
+files %>% 
+  lapply(vroom,
+         col_select = 2:7,
+         col_types = c("c", rep("d", 5)), 
+         col_names = F,
+         locale = locale(decimal_mark = ",")) %>% 
+  bind_rows(.id = "file") %>% 
+  mutate(X2 = gsub(".", "-", X2, fixed = TRUE)) %>% 
+  mutate(X2 = as.POSIXct(X2)) %>% 
+  mutate(X2 = as_datetime(X2)) %>% 
+  rename(date = X2, tz = X3, t_soil = X4, t_surface = X5, t_air = X6, moisture = X7) %>% 
+  separate(file, c("data", "tomst_sensornum"), convert = T) %>% 
+  select(-data) %>% 
+  mutate(date = date - 3*60*60) %>% # UTC-3
+  mutate(site = "Nouragues") %>% 
+  filter(date >= "2023-02-19 12:00:00", date < "2023-02-22 16:45:00") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+              select(tomst_sensornum, site, topography)) %>% 
+  left_join(read_tsv("outputs/granulo.tsv") %>% 
+              select(site, topography, a, b, c)) %>% 
+  mutate(swc = a*moisture^2 + b*moisture + c) %>% 
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc) %>% 
+  write_tsv("outputs/tomst_calib_nouragues.tsv")
+```
+
+```{r calibfign}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+read_tsv("outputs/tomst_calib_nouragues.tsv") %>% 
+  gather(variable, value, -tomst_sensornum, -date, -site) %>% 
+  ggplot(aes(date, value, col = as.character(tomst_sensornum))) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "bottom", axis.title = element_blank()) +
+  scale_color_discrete(guide = "none")
+```
+
+### Measurements
+
+```{r prepmeas}
+#| eval: false
+vroom("outputs/tomst_all.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+              select(tomst_sensornum, date) %>% 
+              rename(field_date = date)) %>% 
+  filter(date >= field_date) %>% 
+  select(-field_date) %>% 
+  write_tsv("outputs/tomst_data.tsv")
+```
+
+```{r measfig}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+vroom("outputs/tomst_data.tsv") %>% 
+  filter(tomst_sensornum %in% c(94244901, 94244930)) %>% 
+  gather(variable, value, -tomst_sensornum, -date, -site) %>% 
+  ggplot(aes(date, value, col = paste(site, tomst_sensornum))) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "bottom", axis.title = element_blank()) +
+  scale_color_discrete("")
+```

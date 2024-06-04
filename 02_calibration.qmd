@@ -1,0 +1,74 @@
+```{r setup}
+#| message: false
+#| include: false
+library(tidyverse)
+library(lubridate)
+library(hms)
+```
+
+# Calibration {.unnumbered}
+
+This chapter details all calibrations.
+
+## Office
+
+## Nouragues
+
+```{r prepn}
+#| message: false
+#| warning: false
+errors <- read_tsv("outputs/tomst_calib_nouragues.tsv") %>% 
+  gather(variable, value, -site, -date, -tomst_sensornum) %>% 
+  group_by(site, date, variable) %>% 
+  mutate(error = value - median(value))
+```
+
+```{r fignhist}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+ggplot(errors, aes(error)) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  ggtitle("15 minutes errors")
+```
+
+```{r fignhour}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+errors %>% 
+  mutate(time = as_hms(date)) %>% 
+  ggplot(aes(time, error, col = as.character(tomst_sensornum))) +
+  geom_line(aes(group = paste(as_date(date), tomst_sensornum))) +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  scale_color_discrete(guide = "none") +
+  ggtitle("15 minutes errors during the day")
+```
+
+```{r figndays}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+errors %>% 
+  ggplot(aes(date, error, col = as.character(tomst_sensornum))) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  scale_color_discrete(guide = "none") +
+  ggtitle("15 minutes errors across few days")
+```
+
+```{r tabn}
+errors %>% 
+  group_by(variable) %>% 
+  summarise(med_val = median(value),
+            sd_err = sd(error),
+            min_err = min(error),
+            max_err = max(error),
+            cv_err = sd_err/med_val*100
+            ) %>% 
+  knitr::kable(caption = "Caption.")
+```

@@ -1,6 +1,10 @@
 # Introduction {.unnumbered}
 
-**microclim** is a sub-project of the first article from Vincyan Badouard's PhD. The objective are:
+**microclim** is a sub-project of the first article from Vincyan Badouard's PhD with the following question:
+
+> Are air temperature and soil moisture linked to canopy openness and topography?
+
+The objective are:
 
 -   Data cleaning
 -   Spatio-temporal exploration of the data
