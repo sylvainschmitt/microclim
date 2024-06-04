@@ -12,6 +12,81 @@ This chapter details all calibrations.
 
 ## Office
 
+```{r prepo}
+#| message: false
+#| warning: false
+errors <- read_tsv("outputs/tomst_calib_office.tsv") %>% 
+  gather(variable, value, -site, -date, -tomst_sensornum) %>% 
+  group_by(site, date, variable) %>% 
+  mutate(error = value - median(value))
+```
+
+```{r figohist}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+ggplot(errors, aes(error)) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  ggtitle("15 minutes errors")
+```
+
+```{r figohist2}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+ggplot(errors, aes(abs(error))) +
+  geom_histogram() +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  scale_x_log10() +
+  ggtitle("15 minutes errors")
+```
+
+```{r figdailyerro}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+errors %>% 
+  group_by(variable, site, date = as_date(date), tomst_sensornum) %>% 
+  summarise(error = median(error)) %>% 
+  ggplot(aes(date, error, col = as.character(tomst_sensornum))) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  scale_color_discrete(guide = "none") +
+  ggtitle("Daily median errors across days")
+```
+
+```{r figdailyerropercaptor}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+errors %>% 
+  group_by(variable, site, date = as_date(date), tomst_sensornum) %>% 
+  summarise(error = median(error)) %>% 
+  ggplot(aes(as.character(tomst_sensornum), error)) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free") +
+  coord_flip() +
+  theme_bw() +
+  theme(axis.title = element_blank())  +
+  ggtitle("Daily median errors across days")
+```
+
+```{r tabo}
+errors %>% 
+  group_by(variable) %>% 
+  summarise(med_val = median(value),
+            sd_err = sd(error),
+            min_err = min(error),
+            max_err = max(error),
+            cv_err = sd_err/med_val*100
+            ) %>% 
+  knitr::kable(caption = "Caption.")
+```
+
 ## Nouragues
 
 ```{r prepn}
@@ -58,7 +133,21 @@ errors %>%
   facet_wrap(~ variable, scales = "free_y") +
   theme_bw() +
   scale_color_discrete(guide = "none") +
-  ggtitle("15 minutes errors across few days")
+  ggtitle("15 minutes errors across days")
+```
+
+```{r figdailyerrnpercaptor}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+errors %>% 
+  ggplot(aes(as.character(tomst_sensornum), error)) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free") +
+  coord_flip() +
+  theme_bw() +
+  theme(axis.title = element_blank())  +
+  ggtitle("15 minutes errors across days")
 ```
 
 ```{r tabn}
