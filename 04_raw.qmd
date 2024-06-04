@@ -1,9 +1,0 @@
-```{r setup}
-#| message: false
-#| include: false
-library(tidyverse)
-```
-
-# Raw {.unnumbered}
-
-This chapter details all raw data analyses.

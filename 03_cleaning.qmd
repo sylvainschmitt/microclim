@@ -2,8 +2,158 @@
 #| message: false
 #| include: false
 library(tidyverse)
+library(vroom)
+library(hms)
 ```
 
 # Cleaning {.unnumbered}
 
 This chapter details all cleaning.
+
+## Daily
+
+```{r}
+#| message: false
+#| warning: false
+raw <- vroom("outputs/tomst_data.tsv") %>% 
+  gather(variable, value, -site, -date, -tomst_sensornum) %>% 
+  group_by(site, variable, tomst_sensornum, date = as_date(date)) %>% 
+  summarise(value = median(value))
+cleaned <- raw %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  mutate(swc = ifelse(swc < 0, NA, swc)) %>% 
+  mutate(swc = ifelse(tomst_sensornum == 94244926, NA, swc))
+cleaned <- cleaned %>% 
+  select(-t_air, -t_soil, -t_surface) %>% 
+  left_join(cleaned %>% 
+              group_by(site, tomst_sensornum) %>% 
+              arrange(date) %>% 
+              filter_at(c("t_soil", "t_air", "t_surface"), ~ abs(. - lag(.)) < 1.5) %>% 
+              select(-swc)) %>% 
+  gather(variable, value, -site, -date, -tomst_sensornum)
+```
+
+```{r}
+#| eval: false
+data <- vroom("outputs/tomst_data.tsv") %>% 
+  gather(variable, value, -site, -date, -tomst_sensornum) %>% 
+  mutate(day = as_date(date))
+daily_cleaned <- cleaned %>% 
+  na.omit() %>% 
+  rename(day = date) %>% 
+  select(site, tomst_sensornum, variable, day) %>% 
+  left_join(data)
+write_tsv(daily_cleaned, "outputs/tomst_daily_cleaned.tsv")
+```
+
+### Temperature
+
+-   Doubtful start: P26:P30 (all Paracou), can be removed by suppressing day with a temperature delta above 1.5°C
+-   Doubtful end: all end, remove last day, can be removed by suppressing day with a temperature delta above 1.5°C
+-   Doubtful t_soil: N02, could be linked to calibration offset but not according to calibration results, could also be natural
+-   Globally seems pretty clean
+
+```{r}
+#| message: false
+#| warning: false
+raw %>% 
+  filter(variable != "swc") %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  mutate(site = str_sub(site, 1, 1)) %>% 
+  ggplot(aes(date, value, col = variable)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(~ paste0(site, tomst_sensornum)) +
+  theme(axis.title = element_blank(), legend.position = "bottom")  +
+  ggtitle("Raw")
+```
+
+```{r}
+#| message: false
+#| warning: false
+cleaned %>% 
+  filter(variable != "swc") %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  mutate(site = str_sub(site, 1, 1)) %>% 
+  ggplot(aes(date, value, col = variable)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(~ paste0(site, tomst_sensornum)) +
+  theme(axis.title = element_blank(), legend.position = "bottom")  +
+  ggtitle("Daily cleaned")
+```
+
+### SWC
+
+-   Doubtful start:
+    -   P28:P30:
+        -   first day
+        -   can be removed easily with swc\>0
+-   All doubtful:
+    -   P26:
+        -   note: 23-10-16 *does note seem to measure humidity*
+        -   To be totally removed
+-   Doubtful period:
+    -   N12
+        -   note: *sensor unearthed* between 23-08-28 and 23-08-29
+        -   data: from 2023-04-21 to 2023-08-29 to be removed
+        -   can be removed easily with swc\>0
+
+```{r}
+#| message: false
+#| warning: false
+raw %>% 
+  filter(variable == "swc") %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+   mutate(site = str_sub(site, 1, 1)) %>% 
+  ggplot(aes(date, value)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(~ paste0(site, tomst_sensornum)) +
+  theme(axis.title = element_blank()) +
+  ggtitle("Raw")
+```
+
+```{r}
+#| message: false
+#| warning: false
+cleaned %>% 
+  filter(variable == "swc") %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  mutate(site = str_sub(site, 1, 1)) %>% 
+  ggplot(aes(date, value)) +
+  geom_line() +
+  theme_bw() +
+  facet_wrap(~ paste0(site, tomst_sensornum)) +
+  theme(axis.title = element_blank()) +
+  ggtitle("Daily cleaned")
+```
+
+### Hourly
+
+Apart from null swc that have be easily removed, everything looked okay with individual inspection. Some sensors shows air and surface but not soil temperature high inrcease during a specific time of the day every day (e.g. N03 around 11:00) that can be explained by direct light exposure but are not errors as tomst sensors are protected against direct radiations.
+
+```{r}
+#| eval: false
+data <- vroom("outputs/tomst_daily_cleaned.tsv")
+hourly_fig <- function(num, data, dest){
+  t <- data %>% 
+  filter(tomst_sensornum == num)
+  g <- t %>% 
+  mutate(day = as_date(date), hour = as_hms(date)) %>% 
+  ggplot(aes(hour, value, col = day)) +
+  geom_line(aes(group = as.character(day))) +
+  theme_bw() +
+  facet_wrap(~ variable, scales = "free_y") +
+  scale_colour_viridis_c(guide = "none") +
+  ggtitle(num, unique(t$site)) +
+  theme(axis.title = element_blank())
+  ggsave(filename = file.path(dest, paste0(num, ".png")),
+         plot = g)
+} 
+for(i in unique(data$tomst_sensornum))
+  hourly_fig(i, data, "outputs/hourly_cleaning")
+hourly_cleaned <- data %>% 
+  filter(value > 0)
+write_tsv(hourly_cleaned, "outputs/tomst_hourly_cleaned.tsv")
+```

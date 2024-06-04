@@ -1,0 +1,35 @@
+```{r setup}
+#| message: false
+#| include: false
+library(tidyverse)
+library(vroom)
+```
+
+# Exploration {.unnumbered}
+
+This chapter details all data exploration.
+
+```{r prep}
+#| eval: false
+hourly <- vroom("outputs/tomst_hourly_cleaned.tsv")
+daily <- hourly %>% 
+  group_by(site, tomst_sensornum, variable, day) %>% 
+  summarise(l = min(value), m = median(value), h = max(value)) %>% 
+  mutate(type = "daily") %>% 
+  rename(date = day) %>% 
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
+dial <- hourly %>% 
+  filter(as_hms(date) >= "07:00:00", as_hms(date) < "19:00:00") %>% 
+  group_by(site, tomst_sensornum, variable, day) %>% 
+  summarise(l = min(value), m = median(value), h = max(value)) %>% 
+  mutate(type = "dial") %>% 
+  rename(date = day) %>% 
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
+diurnal <- hourly %>% 
+  filter(as_hms(date) < "07:00:00", as_hms(date) >= "19:00:00") %>% 
+  group_by(site, tomst_sensornum, variable, day) %>% 
+  summarise(l = min(value), m = median(value), h = max(value)) %>% 
+  mutate(type = "diurnal") %>% 
+  rename(date = day) %>% 
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
+```

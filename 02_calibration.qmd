@@ -64,9 +64,11 @@ errors %>%
 #| warning: false
 #| fig-cap: "Caption."
 errors %>% 
+    mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+   mutate(site = str_sub(site, 1, 1)) %>% 
   group_by(variable, site, date = as_date(date), tomst_sensornum) %>% 
   summarise(error = median(error)) %>% 
-  ggplot(aes(as.character(tomst_sensornum), error)) +
+  ggplot(aes(paste0(site, tomst_sensornum), error)) +
   geom_boxplot() +
   facet_wrap(~ variable, scales = "free") +
   coord_flip() +
@@ -141,9 +143,11 @@ errors %>%
 #| warning: false
 #| fig-cap: "Caption."
 errors %>% 
-  ggplot(aes(as.character(tomst_sensornum), error)) +
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+   mutate(site = str_sub(site, 1, 1)) %>% 
+  ggplot(aes(paste0(site, tomst_sensornum), error)) +
   geom_boxplot() +
-  facet_wrap(~ variable, scales = "free") +
+  facet_wrap(~ variable, scales = "free_x") +
   coord_flip() +
   theme_bw() +
   theme(axis.title = element_blank())  +

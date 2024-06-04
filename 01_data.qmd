@@ -333,7 +333,8 @@ vroom("outputs/tomst_all.tsv") %>%
   left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
               select(tomst_sensornum, date) %>% 
               rename(field_date = date)) %>% 
-  filter(date >= field_date) %>% 
+  filter(date > field_date) %>% 
+  filter(date >= "2023-01-04 00:00:00", date <= "2024-03-31 24:00:00") %>% 
   select(-field_date) %>% 
   write_tsv("outputs/tomst_data.tsv")
 ```
