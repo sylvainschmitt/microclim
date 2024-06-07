@@ -10,6 +10,10 @@ library(hms)
 
 This chapter details all cleaning.
 
+> Note: myClim does not do much cleaning <https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.14192>
+>
+> Note: SoilTemp database does not address data cleaning <https://onlinelibrary.wiley.com/doi/full/10.1111/gcb.15123>
+
 ## Daily
 
 ```{r}

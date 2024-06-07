@@ -50,3 +50,120 @@ This chapter details all indices building.
     -   Month
     -   Season (Dry / Wet)
     -   Year
+
+```{r prep}
+#| eval: false
+data <- read_tsv("outputs/tomst_daily_cleaned.tsv") %>% 
+  filter(variable != "t_surface", type == "daily", metric == "m") %>% 
+  select(-type, -metric) %>% 
+  group_by(site, tomst_sensornum, variable, date = floor_date(date, "month")) %>% 
+  summarise(l = min(value), m = mean(value), h = max(value)) %>% 
+  gather(metric, value, -site, -tomst_sensornum, -variable, -date) %>% 
+  mutate(variable = paste0(variable, "_", metric)) %>% 
+  select(-metric) %>% 
+  mutate(season = ifelse(date >= as_date("23/8/1") & date < as_date("23/12/1"),
+                         "dry", "wet")) %>% 
+  pivot_wider(names_from = variable, values_from = value)
+year_ind <- data %>% 
+  na.omit() %>% 
+  group_by(site, tomst_sensornum) %>% 
+  summarise(
+    bio1_air = mean(t_air_m),
+    bio1_soil = mean(t_soil_m),
+    bio2_air = mean(t_air_h - t_air_l),
+    bio2_soil = mean(t_soil_h - t_soil_l),
+    bio4_air = sd(t_air_m)*100,
+    bio4_soil = sd(t_soil_m)*100,
+    bio5_air = max(t_air_h),
+    bio5_soil = max(t_soil_h),
+    bio6_air = min(t_air_l),
+    bio6_soil = min(t_soil_l),
+    bio7_air = bio5_air - bio6_air,
+    bio7_soil = bio5_soil - bio6_soil,
+    bio3_air = bio2_air/bio7_air*100,
+    bio3_soil = bio2_soil/bio7_soil*100,
+    bio12_soil = mean(swc_m),
+    bio13_soil = max(swc_h),
+    bio14_soil = min(swc_l),
+    bio15_soil = sd(swc_m)/mean(swc_m)
+  )
+wet_ind <- data %>% 
+  filter(season == "wet") %>% 
+  na.omit() %>% 
+  group_by(site, tomst_sensornum) %>% 
+  summarise(
+    bio8_air = mean(t_air_m),
+    bio8_soil = mean(t_soil_m),
+    bio16_soil = mean(swc_m)
+  )
+dry_ind <- data %>% 
+  filter(season == "dry") %>% 
+  na.omit() %>% 
+  group_by(site, tomst_sensornum) %>% 
+  summarise(
+    bio9_air = mean(t_air_m),
+    bio9_soil = mean(t_soil_m),
+    bio17_soil  = mean(swc_m)
+  )
+bind_rows(year_ind, dry_ind, wet_ind) %>% 
+  gather(variable, value, -site, -tomst_sensornum) %>% 
+  separate(variable, c("metric", "variable")) %>% 
+  na.omit() %>% 
+  write_tsv("outputs/tomst_indices.tsv")
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  mutate(variable = paste(metric, variable)) %>% 
+  na.omit() %>% 
+  select(-metric) %>%
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  select(-site, -tomst_sensornum) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  corrplot::corrplot(method = "number", type = "upper", 
+                     number.digits = 1, number.cex = 0.8)
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  ggplot(aes(metric, value, fill = variable)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~ metric, scales = "free")
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, topography) %>% 
+  unique()) %>% 
+  ggplot(aes(topography, value)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~ paste(metric, variable), scales = "free_y") +
+  ggpubr::stat_compare_means(aes(label = after_stat(p.adj)),
+                             label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, light) %>% 
+  unique()) %>% 
+  ggplot(aes(light, value)) +
+  geom_boxplot() +
+  theme_bw() +
+  facet_wrap(~ paste(metric, variable), scales = "free_y") +
+  ggpubr::stat_compare_means(aes(label = after_stat(p.adj)),
+                             label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```

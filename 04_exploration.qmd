@@ -3,6 +3,7 @@
 #| include: false
 library(tidyverse)
 library(vroom)
+library(hms)
 ```
 
 # Exploration {.unnumbered}
@@ -11,25 +12,71 @@ This chapter details all data exploration.
 
 ```{r prep}
 #| eval: false
-hourly <- vroom("outputs/tomst_hourly_cleaned.tsv")
-daily <- hourly %>% 
+dir.create("tmp")
+# daily
+vroom("outputs/tomst_hourly_cleaned.tsv") %>% 
   group_by(site, tomst_sensornum, variable, day) %>% 
   summarise(l = min(value), m = median(value), h = max(value)) %>% 
   mutate(type = "daily") %>% 
   rename(date = day) %>% 
-  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
-dial <- hourly %>% 
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
+  write_tsv("tmp/daily.tsv")
+# dial
+vroom("outputs/tomst_hourly_cleaned.tsv") %>% 
   filter(as_hms(date) >= "07:00:00", as_hms(date) < "19:00:00") %>% 
   group_by(site, tomst_sensornum, variable, day) %>% 
   summarise(l = min(value), m = median(value), h = max(value)) %>% 
   mutate(type = "dial") %>% 
   rename(date = day) %>% 
-  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
-diurnal <- hourly %>% 
-  filter(as_hms(date) < "07:00:00", as_hms(date) >= "19:00:00") %>% 
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
+  write_tsv("tmp/dial.tsv")
+# diurnal
+vroom("outputs/tomst_hourly_cleaned.tsv") %>% 
+  filter(as_hms(date) < "07:00:00" | as_hms(date) >= "19:00:00") %>% 
   group_by(site, tomst_sensornum, variable, day) %>% 
   summarise(l = min(value), m = median(value), h = max(value)) %>% 
   mutate(type = "diurnal") %>% 
   rename(date = day) %>% 
-  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type)
+  gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
+  write_tsv("tmp/diurnal.tsv")
+# merge
+bind_rows(
+  read_tsv("tmp/daily.tsv"),
+  read_tsv("tmp/dial.tsv"),
+  read_tsv("tmp/diurnal.tsv")
+) %>% 
+  write_tsv("outputs/tomst_daily_cleaned.tsv")
+unlink("tmp", recursive = TRUE)
 ```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_daily_cleaned.tsv") %>% 
+  pivot_wider(names_from = metric, values_from = value) %>% 
+  ggplot(aes(date, m, col = paste(site, tomst_sensornum), fill = paste(site, tomst_sensornum))) +
+  geom_ribbon(aes(ymin = l, ymax = h), col = NA, alpha = 0.2) +
+  geom_line() +
+  facet_grid(variable ~ type, scales = "free_y") +
+  theme_bw() +
+  scale_color_discrete(guide = "none") +
+  scale_fill_discrete(guide = "none") +
+  theme(axis.title = element_blank()) +
+  geom_vline(xintercept = as_date(c("23/8/1", "23/12/1")))
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_daily_cleaned.tsv") %>% 
+  filter(metric == "m") %>% 
+  mutate(var_type = paste0(variable, " ", type)) %>% 
+  select(tomst_sensornum, date, var_type, value) %>% 
+  pivot_wider(names_from = var_type, values_from = value) %>% 
+  select(-date, -tomst_sensornum) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  corrplot::corrplot(order = 'AOE', method = "number", type = "upper", 
+                     number.digits = 1, number.cex = 0.8)
+```
+
+> First focus on daily only for swc, t_soil and t_air only
