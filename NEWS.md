@@ -1,3 +1,4 @@
+-   microclim 0.1.0.9008: quick update
 -   microclim 0.1.0.9007: quick and dirty analyses and indices for Vincyane
 -   microclim 0.1.0.9006: all cleaning to discuss
 -   microclim 0.1.0.9005: all calib to discuss

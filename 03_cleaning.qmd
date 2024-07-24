@@ -157,7 +157,12 @@ hourly_fig <- function(num, data, dest){
 } 
 for(i in unique(data$tomst_sensornum))
   hourly_fig(i, data, "outputs/hourly_cleaning")
-hourly_cleaned <- data %>% 
-  filter(value > 0)
-write_tsv(hourly_cleaned, "outputs/tomst_hourly_cleaned.tsv")
+```
+
+```{r}
+#| eval: false
+library(data.table)
+data <- fread("outputs/tomst_daily_cleaned.tsv")
+data <- data[value > 0, ]
+fwrite(data, "outputs/tomst_hourly_cleaned.tsv", sep = "\t")
 ```

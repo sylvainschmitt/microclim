@@ -21,3 +21,10 @@ All data needed for the analyses:
 ```{r, comment=""}
 fs::dir_tree()
 ```
+
+```{r}
+data.frame(files = list.files("Nouragues_2024_02_22/")) %>% 
+  write_tsv("nouragues.tsv")
+data.frame(files = list.files("Paracou_2024_05_06//")) %>% 
+  write_tsv("paracou.tsv")
+```

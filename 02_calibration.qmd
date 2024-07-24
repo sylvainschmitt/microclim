@@ -15,7 +15,7 @@ This chapter details all calibrations.
 ```{r prepo}
 #| message: false
 #| warning: false
-errors <- read_tsv("outputs/tomst_calib_office.tsv") %>% 
+err_off <- read_tsv("outputs/tomst_calib_office.tsv") %>% 
   gather(variable, value, -site, -date, -tomst_sensornum) %>% 
   group_by(site, date, variable) %>% 
   mutate(error = value - median(value))
@@ -25,22 +25,10 @@ errors <- read_tsv("outputs/tomst_calib_office.tsv") %>%
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-ggplot(errors, aes(error)) +
+ggplot(err_off, aes(error)) +
   geom_histogram() +
   facet_wrap(~ variable, scales = "free") +
   theme_bw() +
-  ggtitle("15 minutes errors")
-```
-
-```{r figohist2}
-#| message: false
-#| warning: false
-#| fig-cap: "Caption."
-ggplot(errors, aes(abs(error))) +
-  geom_histogram() +
-  facet_wrap(~ variable, scales = "free") +
-  theme_bw() +
-  scale_x_log10() +
   ggtitle("15 minutes errors")
 ```
 
@@ -48,7 +36,7 @@ ggplot(errors, aes(abs(error))) +
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-errors %>% 
+err_off %>% 
   group_by(variable, site, date = as_date(date), tomst_sensornum) %>% 
   summarise(error = median(error)) %>% 
   ggplot(aes(date, error, col = as.character(tomst_sensornum))) +
@@ -63,7 +51,7 @@ errors %>%
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-errors %>% 
+err_off %>% 
     mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
    mutate(site = str_sub(site, 1, 1)) %>% 
   group_by(variable, site, date = as_date(date), tomst_sensornum) %>% 
@@ -78,7 +66,7 @@ errors %>%
 ```
 
 ```{r tabo}
-errors %>% 
+err_off %>% 
   group_by(variable) %>% 
   summarise(med_val = median(value),
             sd_err = sd(error),
@@ -94,7 +82,7 @@ errors %>%
 ```{r prepn}
 #| message: false
 #| warning: false
-errors <- read_tsv("outputs/tomst_calib_nouragues.tsv") %>% 
+err_nour <- read_tsv("outputs/tomst_calib_nouragues.tsv") %>% 
   gather(variable, value, -site, -date, -tomst_sensornum) %>% 
   group_by(site, date, variable) %>% 
   mutate(error = value - median(value))
@@ -104,7 +92,7 @@ errors <- read_tsv("outputs/tomst_calib_nouragues.tsv") %>%
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-ggplot(errors, aes(error)) +
+ggplot(err_nour, aes(error)) +
   geom_histogram() +
   facet_wrap(~ variable, scales = "free") +
   theme_bw() +
@@ -115,7 +103,7 @@ ggplot(errors, aes(error)) +
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-errors %>% 
+err_nour %>% 
   mutate(time = as_hms(date)) %>% 
   ggplot(aes(time, error, col = as.character(tomst_sensornum))) +
   geom_line(aes(group = paste(as_date(date), tomst_sensornum))) +
@@ -129,7 +117,7 @@ errors %>%
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-errors %>% 
+err_nour %>% 
   ggplot(aes(date, error, col = as.character(tomst_sensornum))) +
   geom_line() +
   facet_wrap(~ variable, scales = "free_y") +
@@ -142,7 +130,7 @@ errors %>%
 #| message: false
 #| warning: false
 #| fig-cap: "Caption."
-errors %>% 
+err_nour %>% 
   mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
    mutate(site = str_sub(site, 1, 1)) %>% 
   ggplot(aes(paste0(site, tomst_sensornum), error)) +
@@ -155,7 +143,7 @@ errors %>%
 ```
 
 ```{r tabn}
-errors %>% 
+err_nour %>% 
   group_by(variable) %>% 
   summarise(med_val = median(value),
             sd_err = sd(error),
@@ -164,4 +152,36 @@ errors %>%
             cv_err = sd_err/med_val*100
             ) %>% 
   knitr::kable(caption = "Caption.")
+```
+
+## Comparison
+
+```{r figcomp}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+t <- err_off %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  mutate(site = str_sub(site, 1, 1)) %>% 
+  group_by(site, tomst_sensornum, variable) %>% 
+  summarise(m_off = median(error), 
+            l_off = quantile(error, .05), 
+            h_off = quantile(error, .95))
+t2 <- err_nour %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  mutate(site = str_sub(site, 1, 1)) %>% 
+  group_by(site, tomst_sensornum, variable) %>% 
+  summarise(m_nour = median(error), 
+            l_nour = quantile(error, .05), 
+            h_nour = quantile(error, .95))
+left_join(t, t2) %>%
+  na.omit() %>% 
+  ggplot(aes(m_off, m_nour)) +
+  geom_abline(linetype = 'dashed') +
+  geom_point() +
+  geom_errorbar(aes(xmin = l_off, xmax = h_off), width = 0, alpha = 0.5) +
+  geom_errorbar(aes(ymin = l_nour, ymax = h_nour), width = 0, alpha = 0.5) +
+  theme_bw() +
+  geom_smooth(method = "lm", se = F) +
+  ggpubr::stat_cor()
 ```

@@ -10,6 +10,8 @@ library(hms)
 
 This chapter details all data exploration.
 
+## Day, dial and diurnal
+
 ```{r prep}
 #| eval: false
 dir.create("tmp")
@@ -20,7 +22,7 @@ vroom("outputs/tomst_hourly_cleaned.tsv") %>%
   mutate(type = "daily") %>% 
   rename(date = day) %>% 
   gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
-  write_tsv("tmp/daily.tsv")
+  vroom_write(file = "tmp/daily.tsv")
 # dial
 vroom("outputs/tomst_hourly_cleaned.tsv") %>% 
   filter(as_hms(date) >= "07:00:00", as_hms(date) < "19:00:00") %>% 
@@ -29,7 +31,7 @@ vroom("outputs/tomst_hourly_cleaned.tsv") %>%
   mutate(type = "dial") %>% 
   rename(date = day) %>% 
   gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
-  write_tsv("tmp/dial.tsv")
+  vroom_write("tmp/dial.tsv")
 # diurnal
 vroom("outputs/tomst_hourly_cleaned.tsv") %>% 
   filter(as_hms(date) < "07:00:00" | as_hms(date) >= "19:00:00") %>% 
@@ -38,14 +40,14 @@ vroom("outputs/tomst_hourly_cleaned.tsv") %>%
   mutate(type = "diurnal") %>% 
   rename(date = day) %>% 
   gather(metric, value, -site, -date, -tomst_sensornum, -variable, -type) %>% 
-  write_tsv("tmp/diurnal.tsv")
+  vroom_write("tmp/diurnal.tsv")
 # merge
 bind_rows(
-  read_tsv("tmp/daily.tsv"),
-  read_tsv("tmp/dial.tsv"),
-  read_tsv("tmp/diurnal.tsv")
+  vroom("tmp/daily.tsv"),
+  vroom("tmp/dial.tsv"),
+  vroom("tmp/diurnal.tsv")
 ) %>% 
-  write_tsv("outputs/tomst_daily_cleaned.tsv")
+  vroom_write("outputs/tomst_daily_cleaned.tsv")
 unlink("tmp", recursive = TRUE)
 ```
 
@@ -79,4 +81,25 @@ read_tsv("outputs/tomst_daily_cleaned.tsv") %>%
                      number.digits = 1, number.cex = 0.8)
 ```
 
-> First focus on daily only for swc, t_soil and t_air only
+> Based on high correlations, I will focus first on daily values of of swc and t_air only.
+
+## Dry season
+
+According to the Guyaflux data, we defined the dry season as fortnightly under 50mm per month, from the 2023-07-22 to the 2023-11-7. Moreover, 2024 is particularly dry so we will focus on the 2023 wet season before the 2023-07-22.
+
+```{r dsdef}
+#| message: false
+#| warning: false
+readxl::read_xlsx("data/TourAFlux-2023-2024.xlsx") %>% 
+  mutate(date = as_date(paste0(Year, "-1-1"))+Day-1, pr = `Somme de Pluie`) %>% 
+  select(date, pr) %>% 
+  group_by(date = floor_date(date, "15 days")) %>% 
+  summarise(pr = sum(pr, na.rm = TRUE)) %>% 
+  ggplot(aes(date, pr)) +
+  geom_rect(xmin = as_date('2023-7-22'), xmax = as_date('2023-11-7'), 
+            fill  = "#fff4e0", ymin = 0, ymax = 50, alpha = 0.3) +
+  geom_col(fill = "lightblue", width = 4) +
+  theme_bw() +
+  geom_hline(yintercept = 50, linetype = "dashed") +
+  theme(axis.title = element_blank())
+```

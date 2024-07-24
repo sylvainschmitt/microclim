@@ -8,6 +8,171 @@ library(tidyverse)
 
 This chapter details all indices building.
 
+-   tas_mean_year:
+-   tas_min_year:
+-   tas_max_year:
+-   tas_mean_dry:
+-   tas_min_dry:
+-   tas_max_dry:
+-   tas_mean_wet:
+-   tas_min_wet:
+-   tas_max_wet:
+-   tas_seas_year = tas_mean_dry  - tas_max_wet:
+-   swc_mean_year:
+-   swc_min_year:
+-   swc_max_year:
+-   swc_mean_dry:
+-   swc_min_dry:
+-   swc_max_dry:
+-   swc_mean_wet:
+-   swc_min_wet:
+-   swc_max_wet:
+-   swc_seas_year = swc_mean_wet - swc_mean_dry
+
+```{r prep}
+#| eval: false
+data <- vroom("outputs/tomst_daily_cleaned.tsv") %>% 
+  filter(variable %in% c("swc", "t_air"), type == "daily", metric == "m") %>% 
+  select(-type, -metric) %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  rename(tas = t_air)
+indices <- bind_rows(
+  data %>% mutate(season = "year"),
+  data %>% filter(date < "2023-07-22") %>% mutate(season = "wet"),
+  data %>% filter(date > "2023-07-22", date < "2023-11-7") %>% mutate(season = "dry")
+) %>% 
+  group_by(site, tomst_sensornum, season) %>% 
+  summarise(tas_mean = mean(tas, na.rm = T), 
+            tas_max = max(tas, na.rm = T), 
+            tas_min = min(tas, na.rm = T),
+            swc_mean = mean(swc, na.rm = T), 
+            swc_max = max(swc, na.rm = T), 
+            swc_min = min(swc, na.rm = T)) %>% 
+  gather(variable, value, -season, -site, -tomst_sensornum) %>% 
+  mutate(variable = paste0(variable, "_", season)) %>% 
+  select(-season) %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  mutate(tas_seas_year = tas_mean_dry  - tas_max_wet,
+         swc_seas_year = swc_mean_wet - swc_mean_dry)
+vroom_write(indices, "outputs/tomst_indices.tsv")
+```
+
+```{r}
+#| message: false
+#| warning: false
+library(ggfortify)
+indices <- vroom::vroom("outputs/tomst_indices.tsv") %>% 
+  na.omit()
+autoplot(princomp(select(indices, -site, -tomst_sensornum), cor = TRUE),
+         data = indices, col = "lightgrey",
+         alpha = 5, loadings = F, loadings.colour = "lightgrey",
+         loadings.label = T, loadings.label.repel = T) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+```{r}
+#| message: false
+#| warning: false
+vroom::vroom("outputs/tomst_indices.tsv") %>% 
+  na.omit() %>% 
+  select(-site, -tomst_sensornum) %>% 
+  cor(use = "pairwise.complete.obs") %>% 
+  corrplot::corrplot(order = 'AOE', method = "number", type = "upper", 
+                     number.digits = 1, number.cex = 0.5)
+```
+
+```{r}
+#| message: false
+#| warning: false
+vroom::vroom("outputs/tomst_indices.tsv") %>% 
+  gather(variable, value, -site, -tomst_sensornum) %>% 
+  # filter(variable %in% c("swc_mean_year", "swc_min_dry", "swc_max_wet", "swc_seas_year",
+  #                        "tas_mean_year", "tas_min_wet", "tas_max_dry", "tas_seas_year")) %>% 
+    filter(variable %in% c("swc_mean_year", "swc_seas_year",
+                         "tas_mean_year", "tas_seas_year")) %>% 
+  ggplot(aes(site, value)) +
+  geom_boxplot() +
+  facet_wrap(~ variable, scales = "free") +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  ggpubr::stat_compare_means(label.y.npc = 0.7)
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, topography) %>% 
+  unique()) %>% 
+  gather(variable, value, -site, -tomst_sensornum, -topography) %>% 
+  filter(variable %in% c("tas_mean_year", "tas_min_wet", "tas_max_dry")) %>% 
+  ggplot(aes(topography, value)) +
+  geom_boxplot() +
+  facet_wrap(~ variable ~ site) +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  ggpubr::stat_compare_means(label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, topography) %>% 
+  unique()) %>% 
+  gather(variable, value, -site, -tomst_sensornum, -topography) %>% 
+  filter(variable %in% c("swc_mean_year", "swc_min_dry", "swc_max_wet")) %>% 
+  ggplot(aes(topography, value)) +
+  geom_boxplot() +
+  facet_wrap(~ variable ~ site) +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  ggpubr::stat_compare_means(label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, light) %>% 
+  unique()) %>% 
+  gather(variable, value, -site, -tomst_sensornum, -light) %>% 
+  filter(variable %in% c("swc_mean_year", "swc_min_dry", "swc_max_wet")) %>% 
+  ggplot(aes(light, value)) +
+  geom_boxplot() +
+  facet_wrap(~ variable ~ site) +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  ggpubr::stat_compare_means(label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```
+
+```{r}
+#| message: false
+#| warning: false
+read_tsv("outputs/tomst_indices.tsv") %>% 
+  left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
+  select(tomst_sensornum, light) %>% 
+  unique()) %>% 
+  gather(variable, value, -site, -tomst_sensornum, -light) %>% 
+  filter(variable %in% c("tas_mean_year", "tas_min_wet", "tas_max_dry")) %>% 
+  ggplot(aes(light, value)) +
+  geom_boxplot() +
+  facet_wrap(~ variable ~ site) +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  ggpubr::stat_compare_means(label.y.npc = 0.7) +
+  theme(axis.text.x = element_text(angle = 90), axis.title = element_blank())
+```
+
+## Old
+
 -   [BIOCLIM](https://www.worldclim.org/data/bioclim.html) indices
     -   BIO1 = Annual Mean Temperature
     -   BIO2 = Mean Diurnal Range (Mean of monthly (max temp - min temp))
@@ -51,7 +216,7 @@ This chapter details all indices building.
     -   Season (Dry / Wet)
     -   Year
 
-```{r prep}
+```{r prepold}
 #| eval: false
 data <- read_tsv("outputs/tomst_daily_cleaned.tsv") %>% 
   filter(variable != "t_surface", type == "daily", metric == "m") %>% 
@@ -109,13 +274,13 @@ bind_rows(year_ind, dry_ind, wet_ind) %>%
   gather(variable, value, -site, -tomst_sensornum) %>% 
   separate(variable, c("metric", "variable")) %>% 
   na.omit() %>% 
-  write_tsv("outputs/tomst_indices.tsv")
+  write_tsv("outputs/tomst_indices_old.tsv")
 ```
 
 ```{r}
 #| message: false
 #| warning: false
-read_tsv("outputs/tomst_indices.tsv") %>% 
+read_tsv("outputs/tomst_indices_old.tsv") %>% 
   mutate(variable = paste(metric, variable)) %>% 
   na.omit() %>% 
   select(-metric) %>%
@@ -129,7 +294,7 @@ read_tsv("outputs/tomst_indices.tsv") %>%
 ```{r}
 #| message: false
 #| warning: false
-read_tsv("outputs/tomst_indices.tsv") %>% 
+read_tsv("outputs/tomst_indices_old.tsv") %>% 
   ggplot(aes(metric, value, fill = variable)) +
   geom_boxplot() +
   theme_bw() +
@@ -139,7 +304,7 @@ read_tsv("outputs/tomst_indices.tsv") %>%
 ```{r}
 #| message: false
 #| warning: false
-read_tsv("outputs/tomst_indices.tsv") %>% 
+read_tsv("outputs/tomst_indices_old.tsv") %>% 
   left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
   select(tomst_sensornum, topography) %>% 
   unique()) %>% 
@@ -155,7 +320,7 @@ read_tsv("outputs/tomst_indices.tsv") %>%
 ```{r}
 #| message: false
 #| warning: false
-read_tsv("outputs/tomst_indices.tsv") %>% 
+read_tsv("outputs/tomst_indices_old.tsv") %>% 
   left_join(read_tsv("outputs/tomst_infos.tsv") %>% 
   select(tomst_sensornum, light) %>% 
   unique()) %>% 
