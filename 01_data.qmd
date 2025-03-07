@@ -1,4 +1,4 @@
-```{r setup}
+```{r set}
 #| message: false
 #| include: false
 library(vroom)
@@ -128,7 +128,8 @@ read_tsv("outputs/guyaflux.tsv") %>%
   geom_line(col = "lightgrey", alpha = 0.5) +
   geom_smooth() +
   facet_wrap(~ variable, scales = "free_y") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.title = element_blank(), axis.text.x = element_text(angle = 90))
 ```
 
 Variables:
@@ -187,8 +188,8 @@ Variables:
 
 ```{r prepall}
 #| eval: false
-files <- list.files("data/Nouragues_2024_02_22", pattern = "data", full.names = TRUE)
-names(files) <- list.files("data/Nouragues_2024_02_22", pattern = "data", full.names = FALSE)
+files <- list.files("data/Nouragues", pattern = "data", full.names = TRUE)
+names(files) <- list.files("data/Nouragues", pattern = "data", full.names = FALSE)
 nouragues <- files %>% 
   lapply(vroom,
          col_select = 2:7,
@@ -209,9 +210,9 @@ nouragues <- files %>%
   left_join(read_tsv("outputs/granulo.tsv") %>% 
               select(site, topography, a, b, c)) %>% 
   mutate(swc = a*moisture^2 + b*moisture + c) %>% 
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc)
-files <- list.files("data/Paracou_2024_05_06", pattern = "data", full.names = TRUE)
-names(files) <- list.files("data/Paracou_2024_05_06", pattern = "data", full.names = FALSE)
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, moisture, swc)
+files <- list.files("data/Paracou", pattern = "data", full.names = TRUE)
+names(files) <- list.files("data/Paracou", pattern = "data", full.names = FALSE)
 paracou <- files %>% 
   lapply(vroom,
          col_select = 2:7,
@@ -232,7 +233,7 @@ paracou <- files %>%
   left_join(read_tsv("outputs/granulo.tsv") %>% 
               select(site, topography, a, b, c)) %>% 
   mutate(swc = a*moisture^2 + b*moisture + c) %>%
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc)
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, moisture, swc)
 bind_rows(nouragues, paracou) %>% 
   write_tsv("outputs/tomst_all.tsv")
 ```
@@ -245,6 +246,7 @@ Variables:
 -   **t_soil**: temperature soil (°C), 8-cm below ground
 -   **t_surface**: temperature surface (°C), just above ground
 -   **t_air**: temperature air (°C), 15-cm above ground
+-   **moisture**: bla
 -   **swc**: soil water content or volumetric moisture (%), 14-cm depth indirect electrical measurement
 -   Other variables could be kept after junction (topography, light, etc for subsequent analyses)
 
@@ -259,7 +261,7 @@ vroom("outputs/tomst_all.tsv") %>%
               select(tomst_sensornum, date) %>% 
               rename(field_date = date)) %>% 
   filter(date < field_date) %>% 
-  select(-field_date, -swc) %>% 
+  select(-field_date, -swc, -moisture) %>% 
   write_tsv("outputs/tomst_calib_office.tsv")
 ```
 
@@ -284,8 +286,8 @@ Calibration of humidity with data taken at Nouragues when the sensors were all p
 
 ```{r prepcalibn}
 #| eval: false
-files <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = TRUE)
-names(files) <- list.files("data/Nouragues_Test_2023_02_22", pattern = "data", full.names = FALSE)
+files <- list.files("data/Nouragues_test", pattern = "data", full.names = TRUE)
+names(files) <- list.files("data/Nouragues_test", pattern = "data", full.names = FALSE)
 files %>% 
   lapply(vroom,
          col_select = 2:7,
@@ -307,7 +309,7 @@ files %>%
   left_join(read_tsv("outputs/granulo.tsv") %>% 
               select(site, topography, a, b, c)) %>% 
   mutate(swc = a*moisture^2 + b*moisture + c) %>% 
-  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, swc) %>% 
+  select(site, date, tomst_sensornum, t_soil, t_surface, t_air, moisture, swc) %>% 
   write_tsv("outputs/tomst_calib_nouragues.tsv")
 ```
 
