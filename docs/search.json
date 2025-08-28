@@ -236,5 +236,33 @@
     "title": "References",
     "section": "",
     "text": "Maclean, Ilya M. D., James P. Duffy, Stef Haesen, Sanne Govaert, Pieter\nDe Frenne, Thomas Vanneste, Jonathan Lenoir, Jonas J. Lembrechts, Marcus\nW. Rhodes, and Koenraad Van Meerbeek. 2021. “On the Measurement of\nMicroclimate.” Methods in Ecology and Evolution 12 (8):\n1397–1410. https://doi.org/10.1111/2041-210x.13627."
+  },
+  {
+    "objectID": "06_modelling.html#weather",
+    "href": "06_modelling.html#weather",
+    "title": "Modelling",
+    "section": "Weather",
+    "text": "Weather\n\n\nCode\nclimdata %&gt;% \n  mutate(date = as_datetime(obs_time)) %&gt;% \n  select(-obs_time) %&gt;% \n  gather(variable, value, -date) %&gt;% \n  ggplot(aes(date, value)) +\n  geom_line() +\n  facet_wrap(~ variable, scales = \"free_y\") +\n  theme_bw()\n\n\n\n\n\n\n\nCode\nread_csv(\"data/weather.csv\") %&gt;% \n  select(-`...1`) %&gt;% \n  gather(variable, value, -date) %&gt;% \n  ggplot(aes(date, value)) +\n  geom_line() +\n  facet_wrap(~ variable, scales = \"free_y\") +\n  theme_bw()"
+  },
+  {
+    "objectID": "06_modelling.html#forest",
+    "href": "06_modelling.html#forest",
+    "title": "Modelling",
+    "section": "Forest",
+    "text": "Forest\n\n\nCode\ndata.frame(\n  values = unlist(forestparams)\n) %&gt;% rownames_to_column(\"parameter\") %&gt;% \n  knitr::kable()\n\n\n\n\n\nparameter\nvalues\n\n\n\n\nh\n10.00\n\n\npai\n4.00\n\n\nx\n1.00\n\n\nclump\n0.20\n\n\nlref\n0.40\n\n\nltra\n0.20\n\n\nleafd\n0.10\n\n\nem\n0.97\n\n\ngsmax\n0.33\n\n\nq50\n100.00\n\n\nskew\n7.00\n\n\nspread\n70.00\n\n\n\n\n\n\n\nCode\ntibble(\n  pai = PAIgeometry(PAI = 8, skew = 7, spread = 70, n = 100),\n  h = 1:100/10\n) %&gt;% \n  ggplot(aes(h, pai)) +\n  geom_path() + \n  geom_point() +\n  theme_bw() +\n  coord_flip() +\n  xlab(\"Height [ m ]\") +\n  ylab(expression(\"Plant Area Index [ \"~m^2~m^{-2}~\"]\"))\n\n\n\n\n\n\n\nCode\nlibrary(AMAPVox)\nvoxels &lt;- readVoxelSpace(\"data/P16_2023_4ha_buffer_HighAlt_PadHLE_intensity1m.vox\")\nvoxels@data &lt;- merge(voxels@data, plantAreaDensity(voxels), \n                     by = c(\"i\", \"j\", \"k\"))\npai &lt;- plantAreaIndex(voxels)[[\"pad_attenuation_PPL_MLE.pai.ag\" ]]\npai &lt;- pai %&gt;% \n  mutate(ground_distance = round(ground_distance)) %&gt;% \n  filter(ground_distance &lt;= 50, ground_distance &gt; 0)\nggplot(data = pai, aes(x=pai, y=ground_distance)) +\n  geom_path() + \n  geom_point() +\n  theme_bw()"
+  },
+  {
+    "objectID": "06_modelling.html#ground",
+    "href": "06_modelling.html#ground",
+    "title": "Modelling",
+    "section": "Ground",
+    "text": "Ground\n\n\nCode\ndata.frame(\n  values = unlist(groundparams)\n) %&gt;% rownames_to_column(\"parameter\") %&gt;% \n  knitr::kable()\n\n\n\n\n\nparameter\nvalues\n\n\n\n\ngref\n0.150000\n\n\nslope\n0.000000\n\n\naspect\n180.000000\n\n\nem\n0.970000\n\n\nrho\n1.529643\n\n\nVm\n0.509000\n\n\nVq\n0.060000\n\n\nMc\n0.542200\n\n\nb\n5.200000\n\n\nPsie\n-5.600000\n\n\nSmax\n0.419000\n\n\nSmin\n0.074000\n\n\nalpha\n0.019000\n\n\nn\n1.310000\n\n\nKsat\n6.240000"
+  },
+  {
+    "objectID": "06_modelling.html#microclimate",
+    "href": "06_modelling.html#microclimate",
+    "title": "Modelling",
+    "section": "Microclimate",
+    "text": "Microclimate\n\n\nCode\nforestparams2 &lt;- forestparams\nforestparams2$h &lt;- 50\nforestparams2$pai &lt;- sum(pai$pai)\nforestparams2$gsmax &lt;- 0.24\nmout1 &lt;- runpointmodel(climdata = climdata,\n                       reqhgt = 0, # sensor height\n                       vegp = forestparams2, \n                       paii = pai$pai,  \n                       groundparams, \n                       maxiter = 500,\n                       lat =49.96807, long= -5.215668)\ntibble(\n  time = climdata$obs_time,\n  t_above = climdata$temp,\n  t_below = mout1$tground\n) %&gt;% \n  mutate(time = as_datetime(time)) %&gt;% \n  # filter(month(time) &lt; 4) %&gt;% \n  gather(variable, value, -time) %&gt;% \n  ggplot(aes(time, value, col = variable)) +\n  geom_line() +\n  theme_bw()\n\n\n\n\n\nCode\ntibble(\n  time = climdata$obs_time,\n  t_above = climdata$temp,\n  t_below = mout1$tground\n) %&gt;% \n  mutate(time = as_datetime(time)) %&gt;% \n  ggplot(aes(t_above, t_below, col = day(time))) +\n  geom_abline() +\n  geom_point() +\n  theme_bw() +\n  scale_color_viridis_c() +\n  coord_flip()\n\n\n\n\n\n\n\nCode\nlibrary(micropoint)\n# generate typical paii profile for a grass surface \n# canopy divided into n = 10 layers:\npaii &lt;- PAIgeometry(PAI = 1, skew = 4, spread = 70, n = 10)\n# run model for height mid-way to canopy top (6 cm above ground)\nmout1 &lt;- runpointmodel(climdata, reqhgt = 0.06, vegparams, paii,  groundparams, lat = 49.96807, long = -5.215668)\n\n\nWarning in runchecksfun(climdata, vegp, groundp, lat, long): Downward shortwave\nradiation higher than expected clear-sky radiation. Capping at clear-sky value\n\n\nWarning in runchecksfun(climdata, vegp, groundp, lat, long): Diffuse radiation\nhigher than total downward radiation. Capping at downward radiation\n\n\nCode\n# run model for height 6 cm above canopy (18 cm above ground)\nmout2 &lt;- runpointmodel(climdata, reqhgt = 0.18, vegparams, paii,  groundparams, lat =49.96807, long= -5.215668)\n\n\nWarning in runchecksfun(climdata, vegp, groundp, lat, long): Downward shortwave\nradiation higher than expected clear-sky radiation. Capping at clear-sky value\nWarning in runchecksfun(climdata, vegp, groundp, lat, long): Diffuse radiation\nhigher than total downward radiation. Capping at downward radiation\n\n\nCode\ntme &lt;- as.POSIXct(climdata$obs_time)\npar(mfrow = c(1, 1))\nplot(mout1$tair ~ tme, type=\"l\", xlab = \"Month\", ylab = \"Air temperature\",\n     ylim = c(-5, 40), col = rgb(1, 0, 0, 0.5))\npar(new = TRUE)\nplot(mout2$tair ~ tme, type=\"l\", xlab = \"\", ylab = \"\",\n     ylim = c(-5, 40), col = rgb(0, 0, 1, 0.5))"
   }
 ]
