@@ -17,12 +17,22 @@ This chapter details all cleaning.
 ## Daily
 
 ```{r}
-#| message: false
-#| warning: false
-raw <- vroom("outputs/tomst_data.tsv") %>% 
+#| eval: false
+sensors <- unique(vroom("outputs/tomst_data.tsv")$tomst_sensornum)
+raw <- lapply(sensors, function(s) {
+  vroom("outputs/tomst_data.tsv") %>% 
+  filter(tomst_sensornum == s) %>% 
   gather(variable, value, -site, -date, -tomst_sensornum) %>% 
   group_by(site, variable, tomst_sensornum, date = as_date(date)) %>% 
   summarise(value = median(value))
+}) %>% bind_rows()
+write_tsv(raw, "outputs/tomst_data_day_raw.tsv")
+```
+
+```{r}
+#| message: false
+#| warning: false
+raw <- read_tsv("outputs/tomst_data_day_raw.tsv")
 cleaned <- raw %>% 
   pivot_wider(names_from = variable, values_from = value) %>% 
   mutate(swc = ifelse(swc < 0, NA, swc)) %>% 
@@ -61,7 +71,7 @@ write_tsv(daily_cleaned, "outputs/tomst_daily_cleaned.tsv")
 #| message: false
 #| warning: false
 raw %>% 
-  filter(variable != "swc") %>% 
+  filter(!(variable %in% c("swc", "moisture"))) %>% 
   mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
   mutate(site = str_sub(site, 1, 1)) %>% 
   ggplot(aes(date, value, col = variable)) +
@@ -76,7 +86,7 @@ raw %>%
 #| message: false
 #| warning: false
 cleaned %>% 
-  filter(variable != "swc") %>% 
+  filter(!(variable %in% c("swc", "moisture"))) %>% 
   mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
   mutate(site = str_sub(site, 1, 1)) %>% 
   ggplot(aes(date, value, col = variable)) +

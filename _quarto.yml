@@ -12,7 +12,7 @@ book:
     - 03_cleaning.qmd
     - 04_exploration.qmd
     - 05_indices.qmd
-    - 06_modelling.qmd
+    - 06_forest.qmd
   appendices:
     - 96_literature.qmd
     - 97_meeting.qmd

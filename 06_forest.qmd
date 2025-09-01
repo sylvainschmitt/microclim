@@ -1,0 +1,286 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+library(sf)
+library(terra)
+```
+
+# Forest {.unnumbered}
+
+Thanks to trilateration with three reference trees, precise mapping of the trees according to the subplot reference points and the precise mapping of the reference point coordinates in UTM by a geometer, sensors can be precisely spatialised under 1 m. Thanks to the high-penetration LIDAR airborne campaigns, we can use their mapping to retrieve the vertical profile of the vegetation (plant area density in $m^2~m^{-3}$). We can also retrieve the corresponding topographic indices, such as elevation in $m$ and the topographic wetness index, as well as soil texture.
+
+```{r prep_sens}
+#| eval: false
+alt <- read_csv("data/ALT_Paracou_9ha_CLEAN_corcord.csv") %>% 
+  select(IdTree, Xutm, Yutm) %>% 
+  rename(id = IdTree, x = Xutm, y = Yutm)
+tomst <- read_csv("data/HOBO_Tomst_environment/Tomst-HOBO sensors - Paracou - Data.csv") %>% 
+  select(TomstSensorNum, TreeNum1, TreeNum2, TreeNum3, DTree1, DTree2, DTree3) %>% 
+  rename(tomst_sensornum = TomstSensorNum, 
+         id_1 = TreeNum1, id_2 = TreeNum2, id_3 = TreeNum3,
+         d_1 = DTree1, d_2 = DTree2, d_3 = DTree3) %>% 
+  filter(!is.na(tomst_sensornum)) %>% 
+  mutate(id_d__1 = paste(id_1, d_1),
+         id_d__2 = paste(id_2, d_2),
+         id_d__3 = paste(id_3, d_3)) %>% 
+  select(tomst_sensornum, id_d__1, id_d__2, id_d__3) %>% 
+  gather(variable, value, -tomst_sensornum) %>% 
+  separate(value, c("id", "d"), convert = TRUE) %>% 
+  separate(variable, c("id_d", "measure"), "__", convert = TRUE) %>% 
+  arrange(tomst_sensornum, measure) %>% 
+  select(-id_d) %>% 
+  mutate(id = ifelse(
+                  str_length(id) == 6,
+                  paste0(str_sub(id, 1,2), "_", str_sub(id, 3,6)),
+                  id
+                )) %>% 
+  left_join(alt) %>% 
+  na.omit() %>% 
+  group_by(tomst_sensornum) %>% 
+  filter(n() >= 2) %>% 
+  do(center = paste(nlm(function(x){
+      sqrt(sum((x[1]-.$x)^2+(x[2]-.$y)^2))-sum(.$d)
+    }, c(mean(.$x), mean(.$y)))$estimate, collapse = ";")) %>% 
+  unnest(center) %>% 
+  separate(center, c("x", "y"), sep = ";") %>%
+  ungroup()
+write_tsv(tomst, "data/sensors_coords.tsv")
+```
+
+```{r sensors_map}
+#| message: false
+#| warning: false
+#| fig-cap: "Tomst coordinates after trilateration."
+read_tsv("data/sensors_coords.tsv") %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  ggplot(aes(x, y)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = paste0("P", tomst_sensornum))) +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  coord_equal()
+```
+
+## PAD
+
+```{r prep_pad}
+#| eval: false
+library(sf)
+library(terra)
+library(AMAPVox)
+voxels <- readVoxelSpace(
+  "data/P16_2023_HighAlt_25ha_buffer_PadHLE_intensity1m_testnewEB.vox"
+)
+voxels@data[, c("x", "y", "z") := getPosition(voxels)[, .(x, y, z)]]
+aoi <- terra::vect("data/ALT.shp")
+aoi <- st_as_sf(aoi)
+aoi <- st_transform(aoi, crs = 2972)
+aoi <- st_union(aoi)
+aoi_m <- as.matrix(aoi[[1]])
+matrix <- cbind(aoi_m, c = 0, d = 1)
+vop <- as.matrix(read.table("data/VOP_P16_25ha.txt"))
+local <- matrix %*% t(vop)
+local <- local[, -c(3,4)]
+X <- range(local[,1]) ; Y <- range(local[,2])
+I <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], i]) # 20 119
+J <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], j])  # 51 150
+K <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], k]) # 0 33
+voxels <- AMAPVox::crop(voxels,
+                        imin = I[1], imax = I[2],
+                        jmin = J[1], jmax = J[2],
+                        kmin = K[1], kmax = K[2])
+pad <- data.table::setDT(voxels@data)
+xyz <- tcrossprod(as.matrix(pad[, .(x, y, z, c=1)]), solve(vop))
+pad[, `:=`(Xutm = xyz[, 1], Yutm = xyz[, 2], Zutm = xyz[, 3])]
+select(pad, Xutm, Yutm, Zutm, PadBVTotal) %>% 
+  rename(x = Xutm, y = Yutm, z = Zutm, pad = PadBVTotal) %>% 
+  write_tsv("data/pad.tsv")
+buffer <- 5
+read_tsv("data/pad.tsv") %>% 
+  select(x, y) %>% 
+  unique() %>% 
+  rename(x_p = x, y_p = y) %>% 
+  mutate(sensors = list(read_tsv("data/sensors_coords.tsv"))) %>% 
+  unnest(sensors) %>% 
+  rowwise() %>% 
+  mutate(d = sqrt(sum((x-x_p)^2+(y-y_p)^2))) %>% 
+  group_by(tomst_sensornum) %>% 
+  filter(d <= buffer) %>% 
+  select(tomst_sensornum, x_p, y_p) %>% 
+  ungroup() %>% 
+  write_tsv("data/sensors_pad_xy.tsv")
+```
+
+```{r pad_all}
+#| message: false
+#| warning: false
+#| fig-cap: "Sum of PAD in space across all layers."
+read_tsv("data/pad.tsv") %>% 
+  filter(pad < 5) %>% 
+  group_by(x, y) %>% 
+  summarise(pad = sum(pad, na.rm = TRUE)) %>% 
+  ggplot(aes(x, y, col = pad)) +
+  geom_point() +
+  scale_color_viridis_c(trans = "sqrt") +
+  theme_bw() +
+  theme(legend.position = "none", axis.title = element_blank()) +
+  coord_equal()
+```
+
+```{r pad_layers}
+#| message: false
+#| warning: false
+#| fig-cap: "Sum of PAD in space by 10-m layers."
+read_tsv("data/pad.tsv") %>% 
+  filter(pad < 5) %>% 
+  filter(z > 9, z < 51) %>% 
+  mutate(z_class = cut(z,
+                       breaks = seq(10, 50, by = 10),
+                       include.lowest = TRUE,
+                       labels = seq(10, 40, by = 10)
+  )) %>% 
+  group_by(x, y, z_class) %>% 
+  summarise(pad = sum(pad, na.rm = TRUE)) %>% 
+  na.omit() %>% 
+  ggplot(aes(x,y, col = pad)) +
+  geom_point() +
+  facet_wrap(~ z_class) +
+  scale_color_viridis_c(trans = "sqrt") +
+  theme_bw() +
+  theme(legend.position = "none", axis.title = element_blank()) +
+  coord_equal()
+```
+
+```{r pad_lateral}
+#| message: false
+#| warning: false
+#| fig-cap: "PAD across y for x=285391.7."
+read_tsv("data/pad.tsv") %>% 
+  filter(pad < 5) %>% 
+  filter(x > 285391.7 - 0.1, x < 285391.7 + 0.1) %>% 
+  ggplot(aes(y, z, col = pad)) +
+  geom_point() +
+  scale_color_viridis_c(trans = "sqrt") +
+  theme_bw() +
+  theme(legend.position = "none", axis.title = element_blank()) +
+  coord_equal()
+```
+
+```{r pad_sensors}
+#| message: false
+#| warning: false
+#| fig-cap: "vertical PAD profiles per sensors."
+read_tsv("data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/pad.tsv")) %>% 
+  group_by(tomst_sensornum, z) %>% 
+  summarise(pad = mean(pad)) %>% 
+  ggplot(aes(z, pad)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  coord_flip() +
+  facet_wrap(~ tomst_sensornum, nrow = 2) +
+  xlab("Height [ m ]") +
+  ylab("Plant Area Density [PAD,"~m^2~m^{-3}~"]")
+```
+
+## Topography
+
+```{r load_topo}
+aoi <- terra::vect("data/ALT.shp")
+aoi <- st_as_sf(aoi)
+aoi <- st_transform(aoi, crs = 2972)
+aoi <- st_union(aoi)
+dem <- rast("data/Paracou_ALT_mnt.tif") %>% 
+  terra::crop(aoi)
+twi <- rast("data/Paracou_ALT_TWI_5m.tif") %>% 
+  terra::crop(aoi)
+```
+
+```{r plot_dem}
+#| message: false
+#| warning: false
+#| fig-cap: "Digital Elevation Model (m)."
+plot(dem)
+```
+
+```{r plot_twi}
+#| message: false
+#| warning: false
+#| fig-cap: "Topographic Wetness Index (unitless)."
+plot(twi)
+```
+
+```{r sensors_topo}
+#| message: false
+#| warning: false
+#| fig-cap: "Topographic indices per sensor."
+read_tsv("data/sensors_coords.tsv") %>% 
+  mutate(dem = extract(dem, read_tsv("data/sensors_coords.tsv")[2:3])$Z) %>% 
+  mutate(twi = extract(twi, read_tsv("data/sensors_coords.tsv")[2:3])$Paracou_TWI_5m) %>% 
+  mutate(tomst_sensornum = gsub("942449", "", tomst_sensornum)) %>% 
+  ggplot(aes(dem, twi)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = paste0("P", tomst_sensornum))) +
+  theme_bw() +
+  xlab("Digital Elevation Model [DEM, m ]") +
+  ylab("Topographic Wetness Index [TWI, unitless ]")
+```
+
+## Pedology
+
+```{r soil_xy}
+#| message: false
+#| warning: false
+#| fig-cap: "Soil texture coordinates after trilateration."
+alt <- read_csv("data/ALT_Paracou_9ha_CLEAN_corcord.csv") %>% 
+  select(IdTree, Xutm, Yutm) %>% 
+  rename(id = IdTree, x = Xutm, y = Yutm)
+soil <- read_csv("data/Labo_data_binded.csv") %>% 
+  mutate(clay = `Argiles %`) %>% 
+  mutate(sand = `Sables fins %` + `Sables grossiers %`) %>% 
+  mutate(silt = `Limons fins %` + `Limons grossiers %`) %>% 
+  select(`Sample ID`, clay, sand, silt,
+         TreeNum1, TreeNum2, TreeNum3, DTree1, DTree2, DTree3) %>% 
+  rename(soil_id = `Sample ID`,
+         id_1 = TreeNum1, id_2 = TreeNum2, id_3 = TreeNum3,
+         d_1 = DTree1, d_2 = DTree2, d_3 = DTree3) %>% 
+  filter(!is.na(clay)) %>% 
+  mutate(d_1 = ifelse(!is.na(id_1) & is.na(d_1), 0, d_1)) %>% 
+  mutate(id_d__1 = paste(id_1, d_1),
+         id_d__2 = paste(id_2, d_2),
+         id_d__3 = paste(id_3, d_3)) %>% 
+  select(soil_id, clay, sand, silt, id_d__1, id_d__2, id_d__3) %>% 
+  gather(variable, value, -soil_id, -clay, -sand, -silt) %>% 
+  separate(value, c("id", "d"), convert = TRUE) %>% 
+  separate(variable, c("id_d", "measure"), "__", convert = TRUE) %>% 
+  arrange(soil_id, measure) %>% 
+  select(-id_d) %>% 
+  mutate(id = ifelse(
+                  str_length(id) == 6,
+                  paste0(str_sub(id, 1,2), "_", str_sub(id, 3,6)),
+                  id
+                )) %>% 
+  na.omit() %>% 
+  left_join(alt) %>% 
+  na.omit() %>% 
+  group_by(soil_id, clay, sand, silt) %>% 
+  filter(n() >= 1) %>% 
+  do(center = paste(nlm(function(x){
+      sqrt(sum((x[1]-.$x)^2+(x[2]-.$y)^2))-sum(.$d)
+    }, c(mean(.$x), mean(.$y)))$estimate, collapse = ";")) %>% 
+  unnest(center) %>% 
+  separate(center, c("x", "y"), sep = ";", convert = TRUE) %>%
+  ungroup() %>% 
+  gather(variable, value, -soil_id, -x, -y)
+ggplot(soil, aes(x, y, col = value)) +
+  geom_point() +
+  facet_wrap(~ variable) +
+  coord_equal() +
+  theme_bw() +
+  scale_color_viridis_c("[ % ]") +
+  theme(axis.title = element_blank(),
+        legend.position = "bottom")
+```
