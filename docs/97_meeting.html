@@ -105,51 +105,62 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">Introduction</span></a>
   </div>
 </li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./01_data.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Data</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./02_calibration.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Calibration</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./03_cleaning.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Cleaning</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./04_exploration.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Exploration</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./05_indices.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Indices</span></a>
-  </div>
-</li>
-        <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="./06_forest.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">Forest</span></a>
-  </div>
-</li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
- <span class="menu-text">Appendices</span></a>
+            <a href="./10_data.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Data</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
       </div>
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_microclimate.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Microclimate</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_macroclimate.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Macroclimate</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./13_guyaflux.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Guyaflux</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./14_vegetation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Vegetation</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./15_topography.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Topography</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./16_pedology.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Pedology</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./96_literature.html" class="sidebar-item-text sidebar-link">
@@ -186,7 +197,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#kick-off" id="toc-kick-off" class="nav-link active" data-scroll-target="#kick-off">24/05/23 - Kick-off</a></li>
+  <li><a href="#relaunch" id="toc-relaunch" class="nav-link active" data-scroll-target="#relaunch">24/10/09 - Relaunch</a></li>
+  <li><a href="#kick-off" id="toc-kick-off" class="nav-link" data-scroll-target="#kick-off">24/05/23 - Kick-off</a></li>
   </ul>
 </nav>
     </div>
@@ -211,6 +223,28 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 <p>This appendix can be used to take notes from meetings.</p>
+<section id="relaunch" class="level2">
+<h2 class="anchored" data-anchor-id="relaunch">24/10/09 - Relaunch</h2>
+<p><em>Sylvain, Erwan, Jonathan</em></p>
+<ul>
+<li>vs ERA5-Land horaire</li>
+<li>agrégation horaire des TOMST TMS4</li>
+<li>offset</li>
+<li>pente équilibre</li>
+<li>transfo fourrier</li>
+<li>fenêtre 5-jours 3-mois</li>
+<li>modèle thermostat : conditions de bord (haut = température 2-m au dessus de la canopée, et bas = température surface)</li>
+<li>Lien Epsilon ~ eau du sol</li>
+<li>Capacité thermique ~ humidité de l’air</li>
+<li>Prévoir zoom données / codes</li>
+<li>Plus échange mails et pages en ligne</li>
+<li>Next steps :&nbsp;
+<ul>
+<li>récupération données et mise au propre</li>
+<li>appropriation codes Erwan</li>
+</ul></li>
+</ul>
+</section>
 <section id="kick-off" class="level2">
 <h2 class="anchored" data-anchor-id="kick-off">24/05/23 - Kick-off</h2>
 <p><em>Sylvain, Vincyane</em></p>

@@ -1,0 +1,24 @@
+---
+title: "Raw data"
+author: Sylvain Schmitt -
+date: today
+date-format: medium
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+---
+
+All raw_data from different sources:
+
+-   guyaflux/: flux tower data from Damien Bonal pers. com.
+-   inventory/: inventory data and shapefile from Vincyane Badouard pers. com.
+-   macro/: ERA5-Land data from openmeteodata service and MeteoFrance data for French Guaian from government open data.
+-   micro/: Tomst ancillary and raw data from Vincyane Badouard pers. com.
+-   pedo/: pedology data from Vincyane Badouard pers. com.
+-   topo/: topography raster from Vincyane Badouard pers. com.
+-   veg/: lidar data from Vincyane Badouard pers. com.
+
+```{r, comment=""}
+fs::dir_tree()
+```

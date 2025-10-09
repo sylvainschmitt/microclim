@@ -1,0 +1,80 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+```
+
+# Macroclimate {.unnumbered}
+
+## ERA5-Land
+
+@muñoz-sabater2021
+
+```{r era}
+#| message: false
+#| warning: false
+#| fig-cap: "ERA5-Land raw temperature data."
+era <- read_tsv("data/raw_data/macro/era5.tsv")
+g_year <- era %>% 
+  group_by(year = year(time)) %>% 
+  summarise(tas = mean(temperature)) %>% 
+  ggplot(aes(year, tas)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank())
+g_month <- era %>% 
+  group_by(month = month(time)) %>% 
+  summarise(tas = mean(temperature)) %>% 
+  ggplot(aes(month, tas)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  scale_x_continuous(breaks = 1:12,
+                     labels = c("J", "F", "M", "A", "M", "J", "J", "A",
+                                "S", "O", "N", "D"))
+g_day <- era %>% 
+  group_by(minute = minute(time)+60*hour(time)) %>% 
+  summarise(tas = mean(temperature)) %>% 
+  ggplot(aes(minute/60, tas)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank())
+cowplot::plot_grid(g_year, g_month, g_day)
+```
+
+## MeteoFrance
+
+```{r weather}
+#| message: false
+#| warning: false
+#| fig-cap: "MeteoFrance raw temperature data."
+weather <- list.files("data/raw_data/macro/", pattern = "gz", full.names = TRUE) %>%
+  read_delim(locale = locale(decimal_mark = "."), delim = ";") %>%
+  select(NOM_USUEL, LAT, LON, AAAAMM, RR, TM, TMMAX, TMMIN) %>%
+  rename_all(tolower) %>%
+  rename(loc = nom_usuel, pr = rr, tas = tm, tasmin = tmmin, tasmax = tmmax) %>%
+  mutate(pr = as.numeric(pr)) %>%
+  mutate(aaaamm = as.character(aaaamm)) %>%
+  mutate(year = str_sub(aaaamm, 1, 4), month = str_sub(aaaamm, 5, 6)) %>%
+  mutate(date = as_date(paste0(year, "-", month, "-01"))) %>%
+  select(loc, lat, lon, date, pr, tas, tasmin, tasmax) %>% 
+  filter(loc == "KOUROU PLAGE")
+g_year <- weather %>% 
+  group_by(year = year(date)) %>% 
+  summarise(tas = mean(tas, na.rm = TRUE)) %>% 
+  ggplot(aes(year, tas)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank())
+g_month <- weather %>% 
+  group_by(month = month(date)) %>% 
+  summarise(tas = mean(tas, na.rm = TRUE)) %>% 
+  ggplot(aes(month, tas)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank()) +
+  scale_x_continuous(breaks = 1:12,
+                     labels = c("J", "F", "M", "A", "M", "J", "J", "A",
+                                "S", "O", "N", "D"))
+cowplot::plot_grid(g_year, g_month)
+```

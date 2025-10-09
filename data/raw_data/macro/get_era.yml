@@ -1,0 +1,11 @@
+name: get-era
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - pandas
+  - pip:
+    - openmeteo-requests
+    - requests-cache
+    - retry-requests
+  

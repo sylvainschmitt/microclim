@@ -1,0 +1,127 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+```
+
+# Microclimate {.unnumbered}
+
+```{r prep}
+#| eval: false
+infos <- read_tsv("data/derived_data/coords.tsv") %>% 
+  select(sensornum, id, topography)
+granulo <- read_csv("data/raw_data/micro/Paracou_Tomst_humidity_granulo_parameters.csv") %>% 
+  rename_all(tolower) %>% 
+  select(-1) %>% 
+  select(topography, a, b, c)
+files <- list.files("data/raw_data/micro/Paracou/",
+                    pattern = "data", full.names = TRUE)
+names(files) <- list.files("data/raw_data/micro/Paracou/",
+                           pattern = "data", full.names = FALSE)
+paracou <- files %>% 
+  lapply(vroom::vroom,
+         col_select = 2:7,
+         col_types = c("c", rep("d", 5)), 
+         col_names = F,
+         locale = locale(decimal_mark = ",")) %>% 
+  bind_rows(.id = "file") %>% 
+  mutate(X2 = gsub(".", "-", X2, fixed = TRUE)) %>% 
+  mutate(X2 = as.POSIXct(X2)) %>% 
+  mutate(X2 = as_datetime(X2)) %>% 
+  rename(date = X2, tz = X3, t_soil = X4, t_surface = X5, t_air = X6, moisture = X7) %>% 
+  separate(file, c("data", "sensornum"), convert = T) %>% 
+  select(-data) %>% 
+  mutate(date = date - 3*60*60) %>% # UTC-3
+  left_join(infos) %>% 
+  left_join(granulo) %>% 
+  mutate(swc = a*moisture^2 + b*moisture + c) %>%
+  select(date, sensornum, id, t_soil, t_surface, t_air, swc)
+write_tsv(paracou, "data/derived_data/tomst.tsv")
+```
+
+A calibration was made of the temperature using data taken over the period in the office (before the installation date).
+
+```{r calibofig}
+#| message: false
+#| warning: false
+#| fig-cap: "Calibration measurements."
+read_tsv("data/derived_data/tomst.tsv") %>% 
+  filter(t_air > 0) %>% 
+  filter(date > as_datetime("2022-11-01 00:00:00")) %>% 
+  filter(date < as_datetime("2023-04-01 00:00:00")) %>% 
+  ggplot(aes(date, t_air, col = as.character(id))) +
+  geom_line() +
+  theme_bw() +
+  xlab("") + ylab("Temperature [ °C ]") +
+  scale_color_discrete(guide = "none")
+```
+
+We can have a look tot the temporal series for sensor 1:
+
+```{r measfig}
+#| message: false
+#| warning: false
+#| fig-cap: "Sensor 1 raw data."
+read_tsv("data/derived_data/tomst.tsv") %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  filter(id == 1) %>% 
+  gather(variable, value, -sensornum, -date, -id) %>% 
+  ggplot(aes(date, value)) +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  theme(axis.title = element_blank())
+```
+
+## Dictionnary
+
+Tomst ancillary informations variables:
+
+-   **site**: Nouragues or Paracou
+-   **plot**: Petit Plateau or P16
+-   **subplot**: subplot number
+-   **tomst_id**: tomst ID
+-   **tomst_sensornum**: tomst manufacturer ID
+-   **transect**: gap or topography effect
+-   **light:** gap type
+-   **topography**: topography type
+-   **layon**: is it near the layon
+-   **date**: installation date
+-   **operator**: Vincyane or Jérôme
+-   **closest_trees**: closest tree number in Nouragues or the three closest tree numbers and distances for Paracou (number:distance)
+-   **gps**: gps coordinates in Nouragues
+-   **after_gap**: before of after the Nouragues' gap
+-   **info_date**: date for the information
+-   **info**: information on the tomst
+
+Granulometry variables:
+
+-   **site**: Paracou or Nouragues
+-   **topography**: topography type
+-   **silt, clay, sand**: silt, clay, sand content (%)
+-   **bulkdensity**: bulk density (g/cm3)
+-   **a**, **b**, **c**: coefficient to compute the volumetric moisture content (%) as *theta=ax\^2+bx+c*
+
+Raw Tomst variables (column with no names):
+
+1.  *Drop*
+2.  **date**: date time every 15 minutes (transform with as.POSIXct and as_datetime)
+3.  **tz**: timezone
+4.  **t_soil**: temperature soil (°C), 8-cm below ground
+5.  **t_surface**: temperature surface (°C), just above ground
+6.  **t_air**: temperature air (°C), 15-cm above ground
+7.  **moisture**: raw electric moisture measurement to convert in swc (soil water content or volumetric moisture (%), 14-cm depth indirect electrical measurement) with swc = a*moisture\^2 + b*moisture + c
+
+Paracou Tomst variables:
+
+-   **date**: date time every 15 minutes
+
+-   **sensornum**: tomst manufacturer ID
+
+-   **t_soil**: temperature soil (°C), 8-cm below ground
+
+-   **t_surface**: temperature surface (°C), just above ground
+
+-   **t_air**: temperature air (°C), 15-cm above ground
+
+-   **swc**: soil water content or volumetric moisture (%), 14-cm depth indirect electrical measurement

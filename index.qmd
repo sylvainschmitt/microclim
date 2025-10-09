@@ -1,18 +1,22 @@
 # Introduction {.unnumbered}
 
-**microclim** is a sub-project of the first article from Vincyan Badouard's PhD with the following question:
+**microclim** is a project that aims to exploit the micrometeorological loggers installed by the ALT project in 2023 to improve our understanding of the horizontal, vertical and temporal variations in the microclimate of tropical forests.
 
-> Are air temperature and soil moisture linked to canopy openness and topography?
+> How do canopy openness, vegetation density and micropography (water and soil texture) affect topsoil, surface and aboveground air temperature, and topsoil moisture?
 
 The objective are:
 
--   Data cleaning
--   Spatio-temporal exploration of the data
--   Choice and computation of metrics
+-   Data gathering: microclimate ((HOBO), macroclimate (ERA5-Land & MeteoFrance), eddy flux (Guyaflux), vegetation structure (mulitple lidars, phenobs?), microtopography (lidar), and pedology
+-   Climate data temporal decomposition: using Fourrier Fast Transformation (e.g. <https://www.fortran.cnrs.fr/wp-content/uploads/2025/07/fortran-hingant.pdf>)
+-   Forest and microclimate offset computation
+-   Statistical exploration of horizontal and temporal drivers
+-   Simplified mechanistic modelling
 
 ## Project
 
 **microclim** includes all codes to access the data (in `data/`) & analyse the data (`files.qmd`) with associated [documentation and figures](https://sylvainschmitt.github.io/microclim/). Intermediary files and outputs can be accessed in `outputs/`. The project takes advantage of `renv` to manage the R environment for enhanced reproducibility.
+
+> To be reviewed later splitting raw and derived data.
 
 ## Contribution
 
@@ -24,12 +28,16 @@ Please preferentially create an issue on GitHub for any questions, bugs or help 
 
 ## Core group
 
--   Sylvain Schmitt (sylvain.schmitt\@cirad.fr)
+-   Sylvain Schmitt CIRAD
 
--   Vincyane Badouard (vincyane.badouard\@gmail.com)
+-   Erwan Hingant University of Picardie Jules Verne
 
--   Géraldine Derroire (geraldin.derroire\@cirad.fr)
+-   Jonathan Lenoir CNRS
 
--   Grégoire Vincent (gregoire.vincent\@ird.fr)
+-   Vincyane Badouard ADEME
 
--   Éric Marcon (eric.marcon\@agroparistech.fr)
+-   Géraldine Derroire CIRAD
+
+-   Grégoire Vincent IRD
+
+-   Éric Marcon APT

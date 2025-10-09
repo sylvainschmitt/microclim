@@ -1,0 +1,21 @@
+---
+title: "Derived data"
+author: Sylvain Schmitt -
+date: today
+date-format: medium
+format: 
+  gfm:
+    toc: true
+    toc-depth: 2
+---
+
+Derived_data prepared and used for the analyses:
+
+-   coords.tsv: Tomst infos and coordinates in Paracou
+-   pad.tsv: plant area density voxels
+-   sensors_pad_xy.tsv: correspondence tables between voxels and sensors coordinates
+-   tomst.tsv: all aggregated Tomst data from Paracou
+
+```{r, comment=""}
+fs::dir_tree()
+```

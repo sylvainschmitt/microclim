@@ -1,0 +1,28 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+library(sf)
+library(terra)
+```
+
+# Topography {.unnumbered}
+
+The digital elevation model (DEM) was extracted from the lidar acquisition and the topographic wetness index (TWI) was further derived.
+
+```{r topo}
+#| message: false
+#| warning: false
+#| fig-cap: "Sensors distribution with topography"
+dem <- rast("data/raw_data/topo/Paracou_ALT_mnt.tif")
+twi <- rast("data/raw_data/topo/Paracou_ALT_TWI_5m.tif")
+read_tsv("data/derived_data/coords.tsv") %>% 
+  mutate(dem = extract(dem, read_tsv("data/derived_data/coords.tsv")[2:3])$Z) %>% 
+  mutate(twi = extract(twi, read_tsv("data/derived_data/coords.tsv")[2:3])$Paracou_TWI_5m) %>% 
+  ggplot(aes(dem, twi)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = id)) +
+  theme_bw() +
+  xlab("Digital Elevation Model [DEM, m ]") +
+  ylab("Topographic Wetness Index [TWI, unitless ]")
+```

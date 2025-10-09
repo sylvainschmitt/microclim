@@ -1,0 +1,124 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+library(sf)
+library(terra)
+```
+
+# Data {.unnumbered}
+
+Acquisitions were made at two sites: Paracou, where LiDAR data was available for comparison, and Nouragues, where the hydrology was potentially different. For the moment, however, we will focus on Paracou. The sensors were located across transects that covered topographical gradients (22) and forest canopy openness (10). The sensors were spaced 10 m apart, with a minimum distance of 1 m from the HOBO sensors to avoid ground disturbance caused by the HOBO stakes. Acquisition began on 1 May 2023. The sensors were Tomst TMS-4s (<https://tomst.com/web/en/systems/tms/tms-4/)> with a temporal resolution of 15 minutes and protection against direct light and rain (although they still overheated in the sunshine).
+
+```{r design}
+#| message: false
+#| warning: false
+#| fig-cap: "Tomst sampling design."
+infos <- read_csv("data/raw_data/micro/Tomst-HOBO sensors - Paracou - Data.csv",
+         n_max = 32) %>% 
+  select(-1) %>% 
+  rename_all(tolower) %>% 
+  mutate(neartreenum = paste0(treenum1, ":", dtree1, ";", 
+                              treenum2, ":", dtree2, ";", 
+                              treenum3, ":", dtree3, ";")) %>% 
+  select(site, plot, subplot, tomstid, tomstsensornum, transect,
+         lighthabitat, topohabitat, layonedge) %>% 
+  rename(id = tomstid, sensornum = tomstsensornum, 
+         light = lighthabitat, topography = topohabitat, layon = layonedge) %>% 
+  mutate(light = recode(light, "Sunfleck" = "Understory"))
+infos %>% 
+  group_by(light, topography) %>% 
+  summarise(N = n()) %>% 
+  ggplot(aes(light, topography, label = N)) +
+  geom_point(aes(size = N)) +
+  ggrepel::geom_text_repel() +
+  theme_bw() +
+  theme(axis.title = element_blank())
+```
+
+```{r coords}
+#| eval: false
+alt <- read_csv("data/raw_data/inventory/ALT_Paracou9ha_20250129_cleancord.csv") %>% 
+  select(IdTree, Xutm, Yutm) %>% 
+  rename(id = IdTree, x = Xutm, y = Yutm) %>% 
+  unique()
+coords <- read_csv("data/raw_data/micro/Tomst-HOBO sensors - Paracou - Data.csv",
+                   n_max = 32) %>% 
+  select(TomstSensorNum, TreeNum1, TreeNum2, TreeNum3, DTree1, DTree2, DTree3) %>% 
+  rename(sensornum = TomstSensorNum, 
+         id_1 = TreeNum1, id_2 = TreeNum2, id_3 = TreeNum3,
+         d_1 = DTree1, d_2 = DTree2, d_3 = DTree3) %>% 
+  mutate(id_d__1 = paste(id_1, d_1),
+         id_d__2 = paste(id_2, d_2),
+         id_d__3 = paste(id_3, d_3)) %>% 
+  select(sensornum, id_d__1, id_d__2, id_d__3) %>% 
+  gather(variable, value, -sensornum) %>% 
+  separate(value, c("id", "d"), convert = TRUE) %>% 
+  separate(variable, c("id_d", "measure"), "__", convert = TRUE) %>% 
+  arrange(sensornum, measure) %>% 
+  select(-id_d) %>% 
+  mutate(id = ifelse(str_length(id) < 6, 190000+id, id)) %>% 
+  mutate(id = ifelse(
+                  str_length(id) == 6,
+                  paste0(str_sub(id, 1,2), "_", str_sub(id, 3,6)),
+                  id
+                )) %>% 
+  left_join(alt) %>% 
+  group_by(sensornum) %>% 
+  do(center = paste(nlm(function(x){
+      sqrt(sum((x[1]-.$x)^2+(x[2]-.$y)^2))-sum(.$d)
+    }, c(mean(.$x), mean(.$y)))$estimate, collapse = ";")) %>% 
+  unnest(center) %>% 
+  separate(center, c("x", "y"), sep = ";") %>%
+  ungroup()
+write_tsv(coords, "data/derived_data/coords.tsv")
+d <- read_tsv("data/derived_data/coords.tsv") %>% 
+  left_join(infos) %>% 
+  filter(id %in% 1:18) %>% 
+  arrange(id) %>% 
+  mutate(dx = x - lag(x), dy = y - lag(y)) %>% 
+  na.omit() %>% 
+  summarise(dx = mean(dx), dy = mean(dy))
+coords <- read_tsv("data/derived_data/coords.tsv") %>% 
+  left_join(infos) %>% 
+  mutate(x = ifelse(id == 19, lag(x) + d$dx, x),
+         y = ifelse(id == 19, lag(y) + d$dy, y)) %>% 
+  mutate(x = ifelse(id == 21, lag(x) + d$dx, x),
+         y = ifelse(id == 21, lag(y) + d$dy, y)) %>% 
+  mutate(x = ifelse(id == 22, lag(x) + d$dx, x),
+         y = ifelse(id == 22, lag(y) + d$dy, y))
+write_tsv(coords, "data/derived_data/coords.tsv")
+```
+
+```{r map}
+#| message: false
+#| warning: false
+#| fig-cap: "Tomst map."
+read_tsv("data/derived_data/coords.tsv") %>% 
+  st_as_sf(coords = c("x", "y"), crs = 32622) %>% 
+  ggplot() +
+  tidyterra::geom_spatraster(aes(fill = Z),
+                             data = rast("data/raw_data/topo/Paracou_ALT_mnt.tif")) +
+  geom_sf(data = read_sf("data/raw_data/inventory/ALT/ALT.shp"), fill = NA) +
+  geom_sf(aes(col = light)) +
+  ggrepel::geom_text_repel(
+    aes(label = id, geometry = geometry),
+    stat = "sf_coordinates",
+    min.segment.length = 0
+  ) +
+  theme_bw() +
+  scale_fill_distiller("Elevation [ m ]", 
+                       type = "seq",
+                       direction = -1,
+                       palette = "Greys",
+                       na.value = "transparent") +
+  theme(axis.title = element_blank())
+```
+
+Associated data are:
+
+-   Macroclimate from ERA5-Land [@muñoz-sabater2021] and MétéoFrance
+-   Flux data from Guyaflux [@bonal2008] representing upper canopy and 2-m conditions and additionally soil water content at different depth
+-   Vegetation from multiple lidar acquisition
+-   Topography extracted from the lidar acquisition
+-   Pedology sampled on the plot

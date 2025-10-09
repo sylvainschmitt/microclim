@@ -2,6 +2,25 @@
 
 This appendix can be used to take notes from meetings.
 
+## 24/10/09 - Relaunch
+
+*Sylvain, Erwan, Jonathan*
+
+-   vs ERA5-Land horaire
+-   agrégation horaire des TOMST TMS4
+-   offset
+-   pente équilibre
+-   transfo fourrier
+-   fenêtre 5-jours 3-mois
+-   modèle thermostat : conditions de bord (haut = température 2-m au dessus de la canopée, et bas = température surface)
+-   Lien Epsilon \~ eau du sol
+-   Capacité thermique \~ humidité de l’air
+-   Prévoir zoom données / codes
+-   Plus échange mails et pages en ligne
+-   Next steps : 
+    -   récupération données et mise au propre
+    -   appropriation codes Erwan
+
 ## 24/05/23 - Kick-off
 
 *Sylvain, Vincyane*

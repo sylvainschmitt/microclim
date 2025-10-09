@@ -6,9 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="dcterms.date" content="2025-10-09">
 
-<title>microclim</title>
+<title>microclim - Guyaflux</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -21,7 +20,60 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-</style>
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="site_libs/quarto-nav/quarto-nav.js"></script>
@@ -31,7 +83,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./10_data.html" rel="next">
+<link href="./14_vegetation.html" rel="next">
+<link href="./12_macroclimate.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -74,7 +127,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Introduction</a></li></ol></nav>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./10_data.html">Data</a></li><li class="breadcrumb-item"><a href="./13_guyaflux.html">Guyaflux</a></li></ol></nav>
       <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
       </a>
       <button type="button" class="btn quarto-search-button" aria-label="" onclick="window.quartoOpenSearch();">
@@ -101,7 +154,7 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Introduction</span></a>
   </div>
 </li>
@@ -128,7 +181,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./13_guyaflux.html" class="sidebar-item-text sidebar-link">
+  <a href="./13_guyaflux.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Guyaflux</span></a>
   </div>
 </li>
@@ -193,26 +246,14 @@ ul.task-list li input[type="checkbox"] {
 <div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">Table of contents</h2>
-   
-  <ul>
-  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a>
-  <ul class="collapse">
-  <li><a href="#project" id="toc-project" class="nav-link" data-scroll-target="#project">Project</a></li>
-  <li><a href="#contribution" id="toc-contribution" class="nav-link" data-scroll-target="#contribution">Contribution</a></li>
-  <li><a href="#help" id="toc-help" class="nav-link" data-scroll-target="#help">Help</a></li>
-  <li><a href="#core-group" id="toc-core-group" class="nav-link" data-scroll-target="#core-group">Core group</a></li>
-  </ul></li>
-  </ul>
-</nav>
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">microclim</h1>
+<h1 class="title">Guyaflux</h1>
 </div>
 
 
@@ -220,12 +261,6 @@ ul.task-list li input[type="checkbox"] {
 <div class="quarto-title-meta">
 
     
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">October 9, 2025</p>
-    </div>
-  </div>
   
     
   </div>
@@ -233,50 +268,45 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<section id="introduction" class="level1 unnumbered">
-<h1 class="unnumbered">Introduction</h1>
-<p><strong>microclim</strong> is a project that aims to exploit the micrometeorological loggers installed by the ALT project in 2023 to improve our understanding of the horizontal, vertical and temporal variations in the microclimate of tropical forests.</p>
+<p><span class="citation" data-cites="bonal2008">BONAL et al. (<a href="99_references.html#ref-bonal2008" role="doc-biblioref">2008</a>)</span></p>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>readxl<span class="sc">::</span><span class="fu">read_excel</span>(<span class="st">"data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx"</span>, </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">sheet =</span> <span class="st">"Gx meteo_2023-2024"</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">col_types =</span> <span class="fu">c</span>(<span class="st">"date"</span>, <span class="fu">rep</span>(<span class="st">"numeric"</span>, <span class="dv">29</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename_all</span>(tolower) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">tas_55 =</span> <span class="st">`</span><span class="at">temp(55)</span><span class="st">`</span>, <span class="at">hr_55 =</span> <span class="st">`</span><span class="at">hr(55)</span><span class="st">`</span>, <span class="at">tas_2 =</span> <span class="st">`</span><span class="at">temp(2,0)</span><span class="st">`</span>, <span class="at">hr_2 =</span> <span class="st">`</span><span class="at">hr(2,0)</span><span class="st">`</span>, </span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">ts_0.1 =</span> t_avg_10cm, <span class="at">swc_0.1 =</span> vwc_avg_10cm, <span class="at">snet =</span> rg, </span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>         <span class="at">ws =</span> <span class="st">`</span><span class="at">vit vent</span><span class="st">`</span>, <span class="at">pr =</span> pluie) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(date, tas_55, hr_55, tas_2, hr_2, ts_0<span class="fl">.1</span>, swc_0<span class="fl">.1</span>, snet, ws, pr) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gather</span>(variable, value, <span class="sc">-</span>date) <span class="sc">%&gt;%</span> </span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(date, value)) <span class="sc">+</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">col =</span> <span class="st">"lightgrey"</span>, <span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>() <span class="sc">+</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> variable, <span class="at">scales =</span> <span class="st">"free_y"</span>) <span class="sc">+</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.title =</span> <span class="fu">element_blank</span>(), <span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">90</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="13_guyaflux_files/figure-html/guyaflux-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption class="figure-caption">Guyaflux raw data</figcaption>
+</figure>
+</div>
+</div>
+</div>
 <blockquote class="blockquote">
-<p>How do canopy openness, vegetation density and micropography (water and soil texture) affect topsoil, surface and aboveground air temperature, and topsoil moisture?</p>
+<p>This is the extracted data for 2023-2024 but more data might be requested to Damien Bonal and Benoit Burbant.</p>
 </blockquote>
-<p>The objective are:</p>
-<ul>
-<li>Data gathering: microclimate ((HOBO), macroclimate (ERA5-Land &amp; MeteoFrance), eddy flux (Guyaflux), vegetation structure (mulitple lidars, phenobs?), microtopography (lidar), and pedology</li>
-<li>Climate data temporal decomposition: using Fourrier Fast Transformation (e.g.&nbsp;<a href="https://www.fortran.cnrs.fr/wp-content/uploads/2025/07/fortran-hingant.pdf" class="uri">https://www.fortran.cnrs.fr/wp-content/uploads/2025/07/fortran-hingant.pdf</a>)</li>
-<li>Forest and microclimate offset computation</li>
-<li>Statistical exploration of horizontal and temporal drivers</li>
-<li>Simplified mechanistic modelling</li>
-</ul>
-<section id="project" class="level2">
-<h2 class="anchored" data-anchor-id="project">Project</h2>
-<p><strong>microclim</strong> includes all codes to access the data (in <code>data/</code>) &amp; analyse the data (<code>files.qmd</code>) with associated <a href="https://sylvainschmitt.github.io/microclim/">documentation and figures</a>. Intermediary files and outputs can be accessed in <code>outputs/</code>. The project takes advantage of <code>renv</code> to manage the R environment for enhanced reproducibility.</p>
-<blockquote class="blockquote">
-<p>To be reviewed later splitting raw and derived data.</p>
-</blockquote>
-</section>
-<section id="contribution" class="level2">
-<h2 class="anchored" data-anchor-id="contribution">Contribution</h2>
-<p>You can contribute to the project by forking the repository on github and cloning the fork to your machine using several options, including GitHub desktop GUI. Access to the data is limited and can be requested by emailing people from the core group (see below). Further informations on contribution are detailed in the online document: <a href="https://sylvainschmitt.github.io/microclim/98_contributing.html" class="uri">https://sylvainschmitt.github.io/microclim/98_contributing.html</a>.</p>
-</section>
-<section id="help" class="level2">
-<h2 class="anchored" data-anchor-id="help">Help</h2>
-<p>Please preferentially create an issue on GitHub for any questions, bugs or help needed regarding <strong>microclim</strong>: <a href="https://github.com/Bsylvainschmitt/microclim/issues" class="uri">https://github.com/sylvainschmitt/microclim/issues</a> . You may however reach us by mail with people from the core group (see below).</p>
-</section>
-<section id="core-group" class="level2">
-<h2 class="anchored" data-anchor-id="core-group">Core group</h2>
-<ul>
-<li><p>Sylvain Schmitt CIRAD</p></li>
-<li><p>Erwan Hingant University of Picardie Jules Verne</p></li>
-<li><p>Jonathan Lenoir CNRS</p></li>
-<li><p>Vincyane Badouard ADEME</p></li>
-<li><p>Géraldine Derroire CIRAD</p></li>
-<li><p>Grégoire Vincent IRD</p></li>
-<li><p>Éric Marcon APT</p></li>
-</ul>
 
 
-</section>
-</section>
+<div id="refs" class="references csl-bib-body hanging-indent" role="list" style="display: none">
+<div id="ref-bonal2008" class="csl-entry" role="listitem">
+BONAL, DAMIEN, ALEXANDRE BOSC, STÉPHANE PONTON, JEAN-YVES GORET, BENOÎT BURBAN, PATRICK GROSS, JEAN-MARC BONNEFOND, et al. 2008. <span>“Impact of Severe Dry Season on Net Ecosystem Exchange in the Neotropical Rainforest of French Guiana.”</span> <em>Global Change Biology</em> 14 (8): 1917–33. <a href="https://doi.org/10.1111/j.1365-2486.2008.01610.x">https://doi.org/10.1111/j.1365-2486.2008.01610.x</a>.
+</div>
+</div>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
@@ -514,10 +544,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./12_macroclimate.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Macroclimate</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./10_data.html" class="pagination-link">
-        <span class="nav-page-text">Data</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./14_vegetation.html" class="pagination-link">
+        <span class="nav-page-text">Vegetation</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

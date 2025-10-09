@@ -7,12 +7,14 @@ book:
   date: last-modified
   chapters:
     - index.qmd
-    - 01_data.qmd
-    - 02_calibration.qmd
-    - 03_cleaning.qmd
-    - 04_exploration.qmd
-    - 05_indices.qmd
-    - 06_forest.qmd
+    - part: 10_data.qmd
+      chapters:
+      - 11_microclimate.qmd
+      - 12_macroclimate.qmd
+      - 13_guyaflux.qmd
+      - 14_vegetation.qmd
+      - 15_topography.qmd
+      - 16_pedology.qmd
   appendices:
     - 96_literature.qmd
     - 97_meeting.qmd

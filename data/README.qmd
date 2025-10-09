@@ -9,22 +9,8 @@ format:
     toc-depth: 2
 ---
 
-All data needed for the analyses:
-
--   `HOBO_Tomst_environment/`: Metadata on Tomst and HOBO in Nouragues and Paracou.
--   `Nouragues_2024_02_22/`: Nouragues Tomst data.
--   `Nouragues_Test_2023_02_22/`: Nouragues Tomst data for intercalibration.
--   `TourAFlux-2023-2024.xlsx`: Guyaflux data.
--   `Tomst_humidity_granulo_parameters/`: Granulometry parameters for Tomst in Nouragues and Paracou .
--   `NewTomst_data_script.Rmd` & `NewTomst_data_script.pdf` : Vincyane preliminary scripts and anlyses
+All data needed for the analyses separated in "raw_data" from different sources and "derived_data" prepared and used for the analyses.
 
 ```{r, comment=""}
 fs::dir_tree()
-```
-
-```{r}
-data.frame(files = list.files("Nouragues_2024_02_22/")) %>% 
-  write_tsv("nouragues.tsv")
-data.frame(files = list.files("Paracou_2024_05_06//")) %>% 
-  write_tsv("paracou.tsv")
 ```

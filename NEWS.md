@@ -1,11 +1,1 @@
--   microclim 0.1.0.9011: ancillary data
--   microclim 0.1.0.9010: micropoint test
--   microclim 0.1.0.9009: keeping moisture for calibration, not better than swc
--   microclim 0.1.0.9008: quick update
--   microclim 0.1.0.9007: quick and dirty analyses and indices for Vincyane
--   microclim 0.1.0.9006: all cleaning to discuss
--   microclim 0.1.0.9005: all calib to discuss
--   microclim 0.1.0.9004: calib Nouragues
--   microclim 0.1.0.9003: data tomst (almost ready)
--   microclim 0.1.0.9002: data granulometry
--   microclim 0.1.0.9001: tomst info & guyaflux
+-   microclim 0.1.0.9001: reset for Fourrier approach

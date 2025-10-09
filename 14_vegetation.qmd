@@ -1,0 +1,92 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+```
+
+# Vegetation {.unnumbered}
+
+Plant Area Density (PAD) derived from 1m3 voxels using AMAPVox and interpolated with sensors locations using a 2-m buffer.
+
+```{r prep}
+#| eval: false
+library(sf)
+library(terra)
+library(AMAPVox)
+voxels <- readVoxelSpace(
+  "data/raw_data/veg/P16_2023_HighAlt_25ha_buffer_PadHLE_intensity1m_testnewEB.vox"
+)
+voxels@data[, c("x", "y", "z") := getPosition(voxels)[, .(x, y, z)]]
+aoi <- read_sf("data/raw_data/inventory/ALT/ALT.shp") %>% 
+  st_transform(crs = 2972) %>% 
+  st_union()
+aoi_m <- as.matrix(aoi[[1]])
+matrix <- cbind(aoi_m, c = 0, d = 1)
+vop <- as.matrix(read.table("data/raw_data/veg/VOP_P16_25ha.txt"))
+local <- matrix %*% t(vop)
+local <- local[, -c(3,4)]
+X <- range(local[,1]) ; Y <- range(local[,2])
+I <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], i]) # 20 119
+J <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], j])  # 51 150
+K <- range(voxels@data[x>X[1] & x<X[2] & y>Y[1] & y<Y[2], k]) # 0 33
+voxels <- AMAPVox::crop(voxels,
+                        imin = I[1], imax = I[2],
+                        jmin = J[1], jmax = J[2],
+                        kmin = K[1], kmax = K[2])
+pad <- data.table::setDT(voxels@data)
+xyz <- tcrossprod(as.matrix(pad[, .(x, y, z, c=1)]), solve(vop))
+pad[, `:=`(Xutm = xyz[, 1], Yutm = xyz[, 2], Zutm = xyz[, 3])]
+select(pad, Xutm, Yutm, Zutm, PadBVTotal) %>% 
+  rename(x = Xutm, y = Yutm, z = Zutm, pad = PadBVTotal) %>% 
+  write_tsv("data/derived_data/pad.tsv")
+buffer <- 2
+read_tsv("data/derived_data/pad.tsv") %>% 
+  select(x, y) %>% 
+  unique() %>% 
+  rename(x_p = x, y_p = y) %>% 
+  mutate(sensors = list(read_tsv("data/derived_data/coords.tsv"))) %>% 
+  unnest(sensors) %>% 
+  rowwise() %>% 
+  mutate(d = sqrt(sum((x-x_p)^2+(y-y_p)^2))) %>% 
+  group_by(sensornum) %>% 
+  filter(d <= buffer) %>% 
+  select(site, plot, subplot, sensornum, id, 
+         transect, light, topography, layon,
+         x_p, y_p) %>% 
+  ungroup() %>% 
+  write_tsv("data/derived_data/sensors_pad_xy.tsv")
+```
+
+```{r pad}
+#| message: false
+#| warning: false
+#| fig-cap: "Plant Area Desnity (PAD) map."
+read_tsv("data/derived_data/pad.tsv") %>% 
+  filter(pad < 5) %>% 
+  group_by(x, y) %>% 
+  summarise(pad = sum(pad, na.rm = TRUE)) %>% 
+  ggplot(aes(x, y, col = pad)) +
+  geom_point() +
+  scale_color_viridis_c("Plant Area Density [PAD,"~m^2~m^{-3}~"]", trans = "sqrt") +
+  theme_bw() +
+  theme(legend.position = "bottom", axis.title = element_blank()) +
+  coord_equal()
+```
+
+```{r pad_sensors}
+#| message: false
+#| warning: false
+#| fig-cap: "Plant Area Desnity (PAD) profile per sensor."
+read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id, sensornum, z) %>% 
+  summarise(pad = mean(pad)) %>% 
+  ggplot(aes(z, pad, col = as.character(id))) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  coord_flip() +
+  xlab("Height [ m ]") +
+  ylab("Plant Area Density [PAD,"~m^2~m^{-3}~"]")
+```

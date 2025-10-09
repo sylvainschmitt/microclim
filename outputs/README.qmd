@@ -8,9 +8,9 @@ format:
     toc-depth: 2
 ---
 
-All outputs and intermediary files of the analyses:
+All outputs of the analyses:
 
--   
+-   ...
 
 ```{r, comment=""}
 fs::dir_tree()

@@ -1,9 +1,9 @@
 # Outputs
-May 31, 2024
+Oct 9, 2025
 
-All outputs and intermediary files of the analyses:
+All outputs of the analyses:
 
-- 
+- …
 
 ``` r
 fs::dir_tree()
