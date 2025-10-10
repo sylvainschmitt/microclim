@@ -115,6 +115,13 @@ read_tsv("data/derived_data/coords.tsv") %>%
   theme(axis.title = element_blank())
 ```
 
+```{r plan}
+#| message: false
+#| warning: false
+#| fig-cap: "Study site plan."
+knitr::include_graphics("figures/plan.png")
+```
+
 Associated data are:
 
 -   Macroclimate from ERA5-Land [@muñoz-sabater2021] and MétéoFrance
