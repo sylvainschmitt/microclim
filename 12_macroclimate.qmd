@@ -17,14 +17,14 @@ library(tidyverse)
 era <- read_tsv("data/raw_data/macro/era5.tsv")
 g_year <- era %>% 
   group_by(year = year(time)) %>% 
-  summarise(tas = mean(temperature)) %>% 
+  summarise(tas = mean(tas)) %>% 
   ggplot(aes(year, tas)) +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank())
 g_month <- era %>% 
   group_by(month = month(time)) %>% 
-  summarise(tas = mean(temperature)) %>% 
+  summarise(tas = mean(tas)) %>% 
   ggplot(aes(month, tas)) +
   geom_line() +
   theme_bw() +
@@ -34,7 +34,7 @@ g_month <- era %>%
                                 "S", "O", "N", "D"))
 g_day <- era %>% 
   group_by(minute = minute(time)+60*hour(time)) %>% 
-  summarise(tas = mean(temperature)) %>% 
+  summarise(tas = mean(tas)) %>% 
   ggplot(aes(minute/60, tas)) +
   geom_line() +
   theme_bw() +

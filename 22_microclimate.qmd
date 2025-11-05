@@ -1,0 +1,259 @@
+```{r set}
+#| message: false
+#| include: false
+library(tidyverse)
+library(microclimr)
+library(terra)
+```
+
+# Microclimate {.unnumbered}
+
+```{r prep}
+#| eval: false
+fc_all <- read_tsv("data/derived_data/tomst.tsv") %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  select(date, id, t_soil, t_surface, t_air) %>% 
+  gather(type, temperature, -date, -id) %>% 
+  group_by(id, type, date = floor_date(date, "1 hour")) %>% 
+  summarise(temperature = mean(temperature)) %>% 
+  group_by(id, type) %>% 
+  do(fft = fft_roll(
+    data = .,
+    t = 5*24,
+    index_col = "date",
+    temperature_col = "temperature",
+    window = "5 days",
+    step = "3 days"
+  )) %>%
+  unnest(fft) %>% 
+  mutate(type = gsub("t_", "", type))
+write_tsv(fc_all, "data/derived_data/fc_all.tsv")
+```
+
+## Decomposition
+
+We again find the 24-hr period bearing most powers with increased power in air than surface and low power for soil.
+
+```{r spectrum}
+#| message: false
+#| warning: false
+#| fig-cap: "Power spectrum across captors. The period 0 has been removed for increased lisbility."
+fc_all <- read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(type = factor(type, levels = c("air", "surface", "soil")))
+fc_all %>% 
+  filter(period > 0) %>% 
+  group_by(type, frequency, period) %>% 
+  summarise(sd = sd(power), power = mean(power)) %>% 
+  ggplot(aes(frequency, power)) +
+  geom_col() +
+  geom_linerange(aes(ymin = power-sd, ymax = power+sd)) +
+  theme_bw() +
+  xlab("Period [h]") +
+  ylab("Power") +
+  scale_x_continuous(
+    breaks = c(0, 1 / 24, 1 / 12, 1 / 8, 1 / 6, 1 / 3),
+    labels = c("0", "24", "12", "8", "6", "3")
+  ) +
+  theme(legend.position.inside = c(0.8, 0.8)) +
+  facet_wrap(~ type, nrow = 3)
+```
+
+The power similarly increases during the dry season. Interestingly we can see that the approach is pretty resilient to unfiltered data even if we can easily detect anomalies in soil power due to captors removed from the soil.
+
+```{r power24}
+#| message: false
+#| warning: false
+#| fig-cap: "Power for period 24-hr variation across time and seasons."
+fc_all %>% 
+  filter(period == 24) %>% 
+  ggplot(aes(datetime, power)) +
+  geom_line(aes(group = paste(id, type))) +
+  theme_bw() +
+  xlab("") +
+  ylab("Power for period 24-hr") +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ type, nrow = 3)
+```
+
+## Buffer
+
+Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a buffer effect with decreased amplitude except for high air temperature, could this be due to a lack of correction of ERA5-Land data?
+
+```{r buffer24}
+#| message: false
+#| warning: false
+#| fig-cap: "HOBO power against ERA5-Land power for the period 24hr."
+era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
+  fft_roll(t = 5*24,
+           index_col = "time",
+           temperature_col = "tas") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  select(date, period, power) %>% 
+  rename(power_era = power)
+read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(!is.na(power_era)) %>% 
+  filter(period == 24) %>% 
+  ggplot(aes(power_era, power, col = as.factor(id))) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = " y ~ x") +
+  theme_bw() +
+  xlab("ERA5-Land temperature [°C]") +
+  ylab("HOBO temperature [°C]") +
+  coord_equal() +
+  theme(legend.position = "bottom") +
+  ggtitle("Period 24-hr") +
+  facet_wrap(~ type) +
+  scale_color_discrete(guide = "none") +
+  geom_abline()
+```
+
+The buffer ratio is stronger for soil, then surface and finally air, and stronger in the wet than the dry season.
+
+```{r buffer_id}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr per sensor season and type."
+read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(!is.na(power_era)) %>% 
+  filter(period == 24) %>% 
+  mutate(ratio = power/power_era) %>% 
+  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet")) %>% 
+  ggplot(aes(as.factor(id), ratio, fill = season, col = season)) +
+  geom_violin() +
+  facet_wrap(~ type, nrow = 3, scales = "free_x") +
+  theme_bw() +
+  geom_hline(yintercept = 1) +
+  ylab("Amplitude ratio for the period 24-hr") +
+  xlab("") +
+  theme(legend.position = "bottom")
+```
+
+## Qualitative descriptors
+
+As expected the buffer ratio is stronger for closed understory than forest gaps with gap borders having intermediate values. This is more marked in wet season and in the air than the soil.
+
+```{r ratio_gap}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr per light position (closed understory or forest gaps)."
+ratios <- read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(!is.na(power_era)) %>% 
+  filter(period == 24) %>% 
+  mutate(ratio = power/power_era) %>% 
+  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet")) %>% 
+  group_by(type, season, id) %>% 
+  summarise(ratio = mean(ratio))
+read_tsv("data/derived_data/coords.tsv") %>% 
+  select(id, light) %>% 
+  left_join(ratios) %>% 
+  ggplot(aes(light, ratio, fill = season)) +
+  geom_boxplot() +
+  facet_wrap(~ type, nrow = 3) +
+  theme_bw() +
+  coord_flip() +
+  ylab("Mean Amplitude ratio for period 24-hr") +
+  xlab("") +
+  scale_fill_discrete("Season")
+```
+
+Similarly the buffer ratio is stronger in bottomlands than plateaus, but even stronger in slopes, especially in wet season and air.
+
+```{r ratio_topo}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr per topographic position."
+read_tsv("data/derived_data/coords.tsv") %>% 
+  select(id, topography) %>% 
+  mutate(topography = factor(topography, 
+                             levels = c("Plateau", "Upper slope",
+                                        "Mid slope", "Lower slope",
+                                        "Bottomland"))) %>% 
+  left_join(ratios) %>% 
+  ggplot(aes(topography, ratio, fill = season)) +
+  geom_boxplot() +
+  facet_wrap(~ type, nrow = 3) +
+  theme_bw() +
+  coord_flip() +
+  ylab("Mean Amplitude ratio for period 24") +
+  xlab("")
+```
+
+## Quantitative descriptors
+
+However, the buffer ratio did not correlated to total plant area index. Its computation should be checked and compared to the field categories. Maybe the buffer is wrong.
+
+```{r ratio_pai}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr along plant area index."
+pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id) %>% 
+  summarise(pad = sum(pad))
+ratios %>% 
+  left_join(pad) %>% 
+  ggplot(aes(pad, ratio, col = season)) +
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_cor() +
+  theme(legend.position = "bottom") +
+  xlab("Plant Area Index") +
+  ylab("Mean Amplitude ratio for period 24") +
+  facet_wrap(~ type)
+```
+
+The buffer ratio correlated well to a proxy of canopy height but in the opposite direction. The vegetation metrics should definitely be checked.
+
+```{r ratio_h}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr along canopy hieght proxy."
+pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id) %>% 
+  filter(pad == max(pad)) %>% 
+  summarise(z = z)
+ratios %>% 
+  left_join(pad) %>% 
+  ggplot(aes(z, ratio, col = season)) +
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_cor() +
+  theme(legend.position = "bottom") +
+  xlab("Height of the max PAD value [m]") +
+  ylab("Mean Amplitude ratio for period 24") +
+  facet_wrap(~ type)
+```
+
+Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
+
+```{r ratio_twi}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr per light position (closed understory or forest gaps)."
+topo <- read_tsv("data/derived_data/coords.tsv") %>% 
+  mutate(twi = extract(rast("data/raw_data/topo/Paracou_ALT_TWI_5m.tif"),
+                       read_tsv("data/derived_data/coords.tsv")[2:3])$Paracou_TWI_5m) %>% 
+  select(id, twi)
+ratios %>% 
+  left_join(topo) %>% 
+  ggplot(aes(twi, ratio, col = season)) +
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_cor() +
+  theme(legend.position = "bottom") +
+  xlab("Topographic Wetness Index") +
+  ylab("Mean Amplitude ratio for period 24") +
+  facet_wrap(~ type)
+```

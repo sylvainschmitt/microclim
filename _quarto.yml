@@ -15,6 +15,10 @@ book:
       - 14_vegetation.qmd
       - 15_topography.qmd
       - 16_pedology.qmd
+    - part: 20_analyses.qmd
+      chapters:
+      - 21_macroclimate.qmd
+      - 22_microclimate.qmd
   appendices:
     - 96_literature.qmd
     - 97_meeting.qmd
