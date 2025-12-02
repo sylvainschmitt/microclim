@@ -6,7 +6,7 @@ library(tidyverse)
 
 # Vegetation {.unnumbered}
 
-Plant Area Density (PAD) derived from 1m3 voxels using AMAPVox and interpolated with sensors locations using a 2-m buffer.
+Plant Area Density (PAD) derived from 1m3 voxels using AMAPVox and interpolated with sensors locations using a 1-m buffer.
 
 ```{r prep}
 #| eval: false
@@ -39,7 +39,7 @@ pad[, `:=`(Xutm = xyz[, 1], Yutm = xyz[, 2], Zutm = xyz[, 3])]
 select(pad, Xutm, Yutm, Zutm, PadBVTotal) %>% 
   rename(x = Xutm, y = Yutm, z = Zutm, pad = PadBVTotal) %>% 
   write_tsv("data/derived_data/pad.tsv")
-buffer <- 2
+buffer <- 1
 read_tsv("data/derived_data/pad.tsv") %>% 
   select(x, y) %>% 
   unique() %>% 
@@ -89,4 +89,24 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   coord_flip() +
   xlab("Height [ m ]") +
   ylab("Plant Area Density [PAD,"~m^2~m^{-3}~"]")
+```
+
+```{r pad_light}
+#| message: false
+#| warning: false
+#| fig-cap: "Plant Area Index (PAI) in function of sensor position along light transects."
+read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id) %>% 
+  summarise(pad = sum(pad)) %>% 
+  left_join(read_tsv("data/derived_data/coords.tsv")) %>% 
+  ggplot(aes(light, pad)) +
+  geom_boxplot() +
+  theme_bw() +
+  ylab("Plant Area Index") +
+  xlab("") +
+  ggpubr::stat_compare_means(comparisons = list( c("Gap", "Gap border"), 
+                                                 c("Gap", "Understory"), 
+                                                 c("Gap border", "Understory")))
 ```

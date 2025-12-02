@@ -6,6 +6,8 @@ library(tidyverse)
 
 # Microclimate {.unnumbered}
 
+> **ToDo:** Use the longest time series.
+
 ```{r prep}
 #| eval: false
 infos <- read_tsv("data/derived_data/coords.tsv") %>% 

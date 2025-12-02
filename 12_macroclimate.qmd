@@ -6,6 +6,8 @@ library(tidyverse)
 
 # Macroclimate {.unnumbered}
 
+> **ToDo:** Correct ERA5-Land (cf @hes2025)
+
 ## ERA5-Land
 
 @muñoz-sabater2021
