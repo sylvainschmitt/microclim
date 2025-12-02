@@ -234,3 +234,55 @@ ratios %>%
 ```
 
 ## Temporal descriptors
+
+We used the Guyaflux tower to explore the temporal characteristics of the microclimate buffer. These characteristics included the daily mean relative humidity at 55 m, the daily total precipitation, the daily mean net solar radiation and the season (factor). Although they are clearly suffering from collinearity, we quickly explored the response of the buffer to each factor independently and together in a linear model. As expected, the buffer showed a strong response to season, with a lower buffer in the wet season. However, it also responded linearly to relative humidity and precipitation: less water in precipitation or in the atmosphere resulted in a better microclimate buffer.
+
+> 💡 We should test it with VPD and cumulated precipitation on a window and select the model with the best explanatory power.
+
+```{r temp_fig}
+#| message: false
+#| warning: false
+#| fig-cap: "Response of the microclimate buffer to each factor independently: daily mean relative humidity at 55 m (hr55), the daily total precipitation (pr), the daily mean net solar radiation (snet)."
+guyaflux <- readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx", 
+                               sheet = "Gx meteo_2023-2024",
+                               col_types = c("date", rep("numeric", 29))) %>% 
+  rename_all(tolower) %>% 
+  rename(hr_55 = `hr(55)`, snet = rg, pr = pluie) %>% 
+  select(date, hr_55, snet, pr) %>% 
+  group_by(date = as_date(date)) %>% 
+  mutate(pr = sum(pr)) %>% 
+  summarise_all(mean) %>% 
+  mutate(pr = log(pr)) %>% 
+  gather(variable, value, -date)
+temp <- read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(!is.na(power_era)) %>% 
+  filter(period == 24) %>% 
+  mutate(ratio = power/power_era) %>% 
+  filter(type == "air") %>% 
+  left_join(guyaflux) %>% 
+  filter(!is.na(variable)) %>% 
+  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet"))
+ggplot(temp, aes(value, ratio)) +
+  geom_point(alpha = .1, aes(col = season)) +
+  facet_wrap(~ variable, scales = "free", nrow = 2) +
+  theme_bw() +
+  ggpubr::stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))
+  ) +
+  geom_smooth(method = "lm") +
+  ylab("Mean Amplitude ratio for period 24") +
+  xlab("")
+```
+
+```{r temp_tab}
+#| message: false
+#| warning: false
+temp %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  filter(!is.infinite(pr)) %>% 
+  mutate(across(c("ratio", "hr_55", "snet", "pr"), scale)) %>% 
+  lm(ratio ~ season + hr_55 + snet + pr, data = .) %>% 
+  sjPlot::tab_model()
+```

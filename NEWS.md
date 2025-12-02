@@ -1,3 +1,4 @@
+-   microclim 0.1.0.9006: buffer temporal descriptors
 -   microclim 0.1.0.9005: abandoned test of longer times series and calibration (notes in pages)
 -   microclim 0.1.0.9004: ERA5-Land debiasing following Hes et al. (2025)
 -   microclim 0.1.0.9003: ToDo, PAI check and 1-m PAD buffer
