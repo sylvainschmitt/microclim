@@ -6,8 +6,6 @@ library(tidyverse)
 
 # Microclimate {.unnumbered}
 
-> **ToDo:** Use the longest time series.
-
 ```{r prep}
 #| eval: false
 infos <- read_tsv("data/derived_data/coords.tsv") %>% 
@@ -41,6 +39,8 @@ paracou <- files %>%
 write_tsv(paracou, "data/derived_data/tomst.tsv")
 ```
 
+> ⚠️ I did not use the most recent data retrieval (30/09/2025) as many sensors were missing. I need to discuss with Léa Françoise what we have and how to best assemble the different time series.
+
 A calibration was made of the temperature using data taken over the period in the office (before the installation date).
 
 ```{r calibofig}
@@ -57,6 +57,23 @@ read_tsv("data/derived_data/tomst.tsv") %>%
   xlab("") + ylab("Temperature [ °C ]") +
   scale_color_discrete(guide = "none")
 ```
+
+```{r calibofig2}
+#| message: false
+#| warning: false
+#| fig-cap: "Calibration measurements."
+read_tsv("data/derived_data/tomst.tsv") %>% 
+  filter(t_air > 0) %>% 
+  filter(date > as_datetime("2022-11-01 00:00:00")) %>% 
+  filter(date < as_datetime("2023-04-01 00:00:00")) %>% 
+  ggplot(aes(as.character(id), t_air)) +
+  geom_boxplot() +
+  theme_bw() +
+  xlab("") + ylab("Temperature [ °C ]") +
+  scale_color_discrete(guide = "none")
+```
+
+> The sensors do not seem to require calibration; however, it appears that we have two sets with different conditions. ⚠️ This needs to be checked.
 
 We can have a look tot the temporal series for sensor 1:
 

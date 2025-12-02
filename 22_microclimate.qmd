@@ -58,7 +58,7 @@ fc_all %>%
   facet_wrap(~ type, nrow = 3)
 ```
 
-The power similarly increases during the dry season. Interestingly we can see that the approach is pretty resilient to unfiltered data even if we can easily detect anomalies in soil power due to captors removed from the soil.
+The power similarly increases during the dry season. Interestingly we can see that the approach is pretty resilient to unfiltered data even if we can easily detect anomalies in soil power due to captors removed from the soil (💡we may want to filter them later).
 
 ```{r power24}
 #| message: false
@@ -77,7 +77,7 @@ fc_all %>%
 
 ## Buffer
 
-Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a buffer effect with decreased amplitude except for high air temperature, could this be due to a lack of correction of ERA5-Land data?
+Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a buffer effect with decreased amplitude.
 
 ```{r buffer24}
 #| message: false
@@ -127,7 +127,6 @@ read_tsv("data/derived_data/fc_all.tsv") %>%
   geom_violin() +
   facet_wrap(~ type, nrow = 3, scales = "free_x") +
   theme_bw() +
-  geom_hline(yintercept = 1) +
   ylab("Amplitude ratio for the period 24-hr") +
   xlab("") +
   theme(legend.position = "bottom")
@@ -185,9 +184,9 @@ read_tsv("data/derived_data/coords.tsv") %>%
   xlab("")
 ```
 
-## Quantitative descriptors
+## Spatial descriptors
 
-However, the buffer ratio did not correlated to total plant area index. Its computation should be checked and compared to the field categories. Maybe the buffer is wrong.
+However, the buffer ratio did not correlated strongly to total plant area index. ⚠️ Its computation should be checked and compared to the field categories.
 
 ```{r ratio_pai}
 #| message: false
@@ -211,32 +210,7 @@ ratios %>%
   facet_wrap(~ type)
 ```
 
-The buffer ratio correlated well to a proxy of canopy height but in the opposite direction. The vegetation metrics should definitely be checked.
-
-```{r ratio_h}
-#| message: false
-#| warning: false
-#| fig-cap: "Amplitude ratio for the period 24-hr along canopy hieght proxy."
-pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
-  rename(x = x_p, y = y_p) %>%
-  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
-  group_by(id) %>% 
-  filter(pad == max(pad)) %>% 
-  summarise(z = z)
-ratios %>% 
-  left_join(pad) %>% 
-  ggplot(aes(z, ratio, col = season)) +
-  geom_point() +
-  theme_bw() +
-  geom_smooth(method = "lm") +
-  ggpubr::stat_cor() +
-  theme(legend.position = "bottom") +
-  xlab("Height of the max PAD value [m]") +
-  ylab("Mean Amplitude ratio for period 24") +
-  facet_wrap(~ type)
-```
-
-Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
+Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. 💡 However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
 
 ```{r ratio_twi}
 #| message: false
@@ -258,3 +232,5 @@ ratios %>%
   ylab("Mean Amplitude ratio for period 24") +
   facet_wrap(~ type)
 ```
+
+## Temporal descriptors
