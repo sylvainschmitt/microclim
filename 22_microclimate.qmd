@@ -84,6 +84,7 @@ Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a
 #| warning: false
 #| fig-cap: "HOBO power against ERA5-Land power for the period 24hr."
 era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
+  mutate(tas = (tas-13.5)/0.48) %>% 
   fft_roll(t = 5*24,
            index_col = "time",
            temperature_col = "tas") %>% 
@@ -97,7 +98,7 @@ read_tsv("data/derived_data/fc_all.tsv") %>%
   filter(period == 24) %>% 
   ggplot(aes(power_era, power, col = as.factor(id))) +
   geom_point() +
-  geom_smooth(method = "lm", formula = " y ~ x") +
+  geom_smooth(method = "lm", formula = "y ~ x") +
   theme_bw() +
   xlab("ERA5-Land temperature [°C]") +
   ylab("HOBO temperature [°C]") +

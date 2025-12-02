@@ -13,7 +13,7 @@ All raw_data from different sources:
 
 -   guyaflux/: flux tower data from Damien Bonal pers. com.
 -   inventory/: inventory data and shapefile from Vincyane Badouard pers. com.
--   macro/: ERA5-Land data from openmeteodata service and MeteoFrance data for French Guaian from government open data.
+-   macro/: ERA5-Land data from openmeteodata service and MeteoFrance data for French Guaian from government open data (<https://meteo.data.gouv.fr/datasets/6569b4473bedf2e7abad3b72>).
 -   micro/: Tomst ancillary and raw data from Vincyane Badouard pers. com.
 -   pedo/: pedology data from Vincyane Badouard pers. com.
 -   topo/: topography raster from Vincyane Badouard pers. com.

@@ -6,8 +6,6 @@ library(tidyverse)
 
 # Macroclimate {.unnumbered}
 
-> **ToDo:** Correct ERA5-Land (cf @hes2025)
-
 ## ERA5-Land
 
 @muñoz-sabater2021
@@ -15,7 +13,7 @@ library(tidyverse)
 ```{r era}
 #| message: false
 #| warning: false
-#| fig-cap: "ERA5-Land raw temperature data."
+#| fig-cap: "ERA5-Land raw temperature data for Paracou."
 era <- read_tsv("data/raw_data/macro/era5.tsv")
 g_year <- era %>% 
   group_by(year = year(time)) %>% 
@@ -46,37 +44,124 @@ cowplot::plot_grid(g_year, g_month, g_day)
 
 ## MeteoFrance
 
+We computed back the correction of @hes2025 (see section 2 in SI) to determine a and b such $T_{ec} = \frac{T_e-b}{a}$ in order to correct ERA5-Land with Meteo France weather station data from Kourou CSG.
+
+```{r weather_rel}
+#| message: false
+#| warning: false
+#| fig-cap: "The temperature relationship between the hourly temperature at the weather station and the hourly temperature at ERA5-Land, as well as the correction factors a and b, following @hes2025.."
+weather <- list.files("data/raw_data/macro/", pattern = "gz", full.names = TRUE) %>%
+  read_delim(locale = locale(decimal_mark = "."), delim = ";") %>% 
+  select(NOM_USUEL, LAT, LON, AAAAMMJJHH, RR1, TN50) %>%
+  rename_all(tolower) %>%
+  rename(loc = nom_usuel, pr = rr1, tas = tn50) %>%
+  na.omit() %>% 
+  mutate(aaaammjjhh = as.character(aaaammjjhh)) %>%
+  mutate(year = str_sub(aaaammjjhh, 1, 4), 
+         month = str_sub(aaaammjjhh, 5, 6),
+         day = str_sub(aaaammjjhh, 7, 8),
+         hour = str_sub(aaaammjjhh, 9, 10)) %>%
+  mutate(time = as_datetime(paste0(year, "-", month, "-", day, 
+                                   " ", hour, ":00:00"))) %>%
+  select(loc, lat, lon, time, tas) %>% 
+  filter(loc == "KOUROU CSG") %>% 
+  left_join(read_tsv("data/raw_data/macro/era5_station.tsv") %>% 
+              select(-lon, -lat),
+            suffix = c("_station", "_era"), by = "time") %>% 
+  na.omit()
+a <- sd(weather$tas_era)/sd(weather$tas_station)
+b <- mean(weather$tas_era)-a*mean(weather$tas_station)
+weather %>% 
+  ggplot(aes(tas_station, tas_era)) +
+  geom_abline() +
+  geom_point(alpha = .1, aes(col = hour(time))) +
+  theme_bw() +
+  coord_equal() +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggpubr::stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),
+  ) +
+  scale_color_viridis_c("Hour of the day") +
+  xlab("Weather station hourly temperacture [°C]") +
+  ylab("ERA5-Land hourly temperacture [°C]") +
+  ggtitle(paste0("a = ", round(a, 2), " | b = ", round(b, 2)))
+```
+
+> The result differ from @hes2025 where $a=0.65$ and $b=8.72$. ⚠️ this correction as a strong effect on the resulting microclimatic buffer.
+
 ```{r weather}
 #| message: false
 #| warning: false
-#| fig-cap: "MeteoFrance raw temperature data."
-weather <- list.files("data/raw_data/macro/", pattern = "gz", full.names = TRUE) %>%
-  read_delim(locale = locale(decimal_mark = "."), delim = ";") %>%
-  select(NOM_USUEL, LAT, LON, AAAAMM, RR, TM, TMMAX, TMMIN) %>%
-  rename_all(tolower) %>%
-  rename(loc = nom_usuel, pr = rr, tas = tm, tasmin = tmmin, tasmax = tmmax) %>%
-  mutate(pr = as.numeric(pr)) %>%
-  mutate(aaaamm = as.character(aaaamm)) %>%
-  mutate(year = str_sub(aaaamm, 1, 4), month = str_sub(aaaamm, 5, 6)) %>%
-  mutate(date = as_date(paste0(year, "-", month, "-01"))) %>%
-  select(loc, lat, lon, date, pr, tas, tasmin, tasmax) %>% 
-  filter(loc == "KOUROU PLAGE")
+#| fig-cap: "MeteoFrance and ERA5-Land raw temperature data for Kourou CSG."
 g_year <- weather %>% 
-  group_by(year = year(date)) %>% 
-  summarise(tas = mean(tas, na.rm = TRUE)) %>% 
-  ggplot(aes(year, tas)) +
+  mutate(tas_era_cor = (tas_era-13.5)/0.48) %>% 
+  gather(type, tas, -loc, -lon, -lat, -time) %>% 
+  group_by(type, year = year(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(year, tas, col = type)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        legend.position = "bottom")
+g_month <- weather %>% 
+  mutate(tas_era_cor = (tas_era-b)/a) %>% 
+  gather(type, tas, -loc, -lon, -lat, -time) %>% 
+  group_by(type, month = month(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(month, tas, col = type)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        legend.position = "bottom") +
+  scale_x_continuous(breaks = 1:12,
+                     labels = c("J", "F", "M", "A", "M", "J", "J", "A",
+                                "S", "O", "N", "D"))
+g_day <- weather %>% 
+  mutate(tas_era_cor = (tas_era-b)/a) %>% 
+  gather(type, tas, -loc, -lon, -lat, -time) %>% 
+  group_by(type, minute = minute(time)+60*hour(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(minute/60, tas, col = type)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank(),
+        legend.position = "bottom")
+cowplot::plot_grid(g_year, g_month, g_day)
+```
+
+## Debiasing
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-cap: "ERA5-Land raw and debiased temperature data for Paracou."
+era <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
+  mutate(tas_cor = (tas-b)/a) %>% 
+  rename(raw = tas, debiased = tas_cor) %>% 
+  gather(type, tas, -time, -lon, -lat)
+g_year <- era %>% 
+  group_by(type, year = year(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(year, tas, col = type)) +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank())
-g_month <- weather %>% 
-  group_by(month = month(date)) %>% 
-  summarise(tas = mean(tas, na.rm = TRUE)) %>% 
-  ggplot(aes(month, tas)) +
+g_month <- era %>% 
+  group_by(type, month = month(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(month, tas, col = type)) +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank()) +
   scale_x_continuous(breaks = 1:12,
                      labels = c("J", "F", "M", "A", "M", "J", "J", "A",
                                 "S", "O", "N", "D"))
-cowplot::plot_grid(g_year, g_month)
+g_day <- era %>% 
+  group_by(type, minute = minute(time)+60*hour(time)) %>% 
+  summarise(tas = mean(tas)) %>% 
+  ggplot(aes(minute/60, tas, col = type)) +
+  geom_line() +
+  theme_bw() +
+  theme(axis.title = element_blank())
+cowplot::plot_grid(g_year, g_month, g_day)
 ```
