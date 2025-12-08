@@ -6,7 +6,7 @@ library(tidyverse)
 
 # Vegetation {.unnumbered}
 
-Plant Area Density (PAD) derived from 1m3 voxels using AMAPVox and interpolated with sensors locations using a 1-m buffer.
+Plant Area Density (PAD) derived from 1m3 voxels using AMAPVox and interpolated with sensors locations using a 3-m buffer.
 
 ```{r prep}
 #| eval: false
@@ -39,7 +39,7 @@ pad[, `:=`(Xutm = xyz[, 1], Yutm = xyz[, 2], Zutm = xyz[, 3])]
 select(pad, Xutm, Yutm, Zutm, PadBVTotal) %>% 
   rename(x = Xutm, y = Yutm, z = Zutm, pad = PadBVTotal) %>% 
   write_tsv("data/derived_data/pad.tsv")
-buffer <- 1
+buffer <- 3
 read_tsv("data/derived_data/pad.tsv") %>% 
   select(x, y) %>% 
   unique() %>% 
@@ -81,7 +81,7 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
   group_by(id, sensornum, z) %>% 
-  summarise(pad = mean(pad)) %>% 
+  summarise(pad = median(pad)) %>% 
   ggplot(aes(z, pad, col = as.character(id))) +
   geom_point() +
   geom_line() +
@@ -98,6 +98,9 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
 read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  filter(pad < 5) %>% 
+  group_by(id, z) %>% 
+  summarise(pad = median(pad)) %>% 
   group_by(id) %>% 
   summarise(pad = sum(pad)) %>% 
   left_join(read_tsv("data/derived_data/coords.tsv")) %>% 
@@ -109,4 +112,27 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   ggpubr::stat_compare_means(comparisons = list( c("Gap", "Gap border"), 
                                                  c("Gap", "Understory"), 
                                                  c("Gap border", "Understory")))
+```
+
+```{r pad_light_strata}
+#| message: false
+#| warning: false
+#| fig-cap: "Plant Area Index (PAI) in function of sensor position along light transects and strata."
+read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  filter(pad < 5) %>% 
+  group_by(id, z) %>% 
+  summarise(pad = median(pad)) %>% 
+  filter(z > 0, z <= 60) %>% 
+  mutate(z_class = cut(z, (0:2)*30)) %>% 
+  group_by(id, z_class) %>% 
+  summarise(pad = sum(pad)) %>% 
+  left_join(read_tsv("data/derived_data/coords.tsv")) %>% 
+  ggplot(aes(light, pad, fill = z_class)) +
+  geom_boxplot() +
+  theme_bw() +
+  ylab("Plant Area Index") +
+  xlab("") +
+  facet_wrap(~ z_class, scales = "free_y")
 ```

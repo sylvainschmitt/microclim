@@ -212,6 +212,32 @@ ratios %>%
   facet_wrap(~ type)
 ```
 
+```{r ratio_pai_strata}
+#| message: false
+#| warning: false
+#| fig-cap: "Amplitude ratio for the period 24-hr along plant area index and strata."
+pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
+  rename(x = x_p, y = y_p) %>%
+  left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id, z) %>% 
+  summarise(pad = median(pad)) %>% 
+  filter(z > 0, z <= 60) %>% 
+  mutate(z_class = cut(z, (0:2)*30)) %>% 
+  group_by(id, z_class) %>% 
+  summarise(pad = sum(pad))
+ratios %>% 
+  left_join(pad) %>% 
+  ggplot(aes(pad, ratio, col = season)) +
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_cor() +
+  theme(legend.position = "bottom") +
+  xlab("Plant Area Index") +
+  ylab("Mean Amplitude ratio for period 24") +
+  facet_grid(z_class ~ type)
+```
+
 Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. 💡 However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
 
 ```{r ratio_twi}
