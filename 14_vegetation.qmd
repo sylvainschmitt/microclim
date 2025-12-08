@@ -36,7 +36,9 @@ voxels <- AMAPVox::crop(voxels,
 pad <- data.table::setDT(voxels@data)
 xyz <- tcrossprod(as.matrix(pad[, .(x, y, z, c=1)]), solve(vop))
 pad[, `:=`(Xutm = xyz[, 1], Yutm = xyz[, 2], Zutm = xyz[, 3])]
-select(pad, Xutm, Yutm, Zutm, PadBVTotal) %>% 
+select(pad, Xutm, Yutm, Zutm, PadBVTotal, ground_distance) %>% 
+  mutate(h = round(ground_distance)) %>% 
+  filter(h >= 0, h <= 55) %>% 
   rename(x = Xutm, y = Yutm, z = Zutm, pad = PadBVTotal) %>% 
   write_tsv("data/derived_data/pad.tsv")
 buffer <- 3
@@ -80,9 +82,9 @@ read_tsv("data/derived_data/pad.tsv") %>%
 read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
-  group_by(id, sensornum, z) %>% 
+  group_by(id, sensornum, h) %>% 
   summarise(pad = median(pad)) %>% 
-  ggplot(aes(z, pad, col = as.character(id))) +
+  ggplot(aes(h, pad, col = as.character(id))) +
   geom_point() +
   geom_line() +
   theme_bw() +
@@ -99,7 +101,7 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
   filter(pad < 5) %>% 
-  group_by(id, z) %>% 
+  group_by(id, h) %>% 
   summarise(pad = median(pad)) %>% 
   group_by(id) %>% 
   summarise(pad = sum(pad)) %>% 
@@ -122,17 +124,17 @@ read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
   filter(pad < 5) %>% 
-  group_by(id, z) %>% 
+  group_by(id, h) %>% 
   summarise(pad = median(pad)) %>% 
-  filter(z > 0, z <= 60) %>% 
-  mutate(z_class = cut(z, (0:2)*30)) %>% 
-  group_by(id, z_class) %>% 
+  filter(h > 0, h <= 40) %>% 
+  mutate(strata = cut(h, (0:4)*10)) %>% 
+  group_by(id, strata) %>% 
   summarise(pad = sum(pad)) %>% 
   left_join(read_tsv("data/derived_data/coords.tsv")) %>% 
-  ggplot(aes(light, pad, fill = z_class)) +
+  ggplot(aes(light, pad, fill = strata)) +
   geom_boxplot() +
   theme_bw() +
   ylab("Plant Area Index") +
   xlab("") +
-  facet_wrap(~ z_class, scales = "free_y")
+  facet_wrap(~ strata, scales = "free_y")
 ```

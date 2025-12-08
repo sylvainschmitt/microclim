@@ -219,11 +219,10 @@ ratios %>%
 pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
-  group_by(id, z) %>% 
+  group_by(id, h) %>% 
   summarise(pad = median(pad)) %>% 
-  filter(z > 0, z <= 60) %>% 
-  mutate(z_class = cut(z, (0:2)*30)) %>% 
-  group_by(id, z_class) %>% 
+  mutate(strata = ifelse(h < 10, "understory", "upperstory")) %>% 
+  group_by(id, strata) %>% 
   summarise(pad = sum(pad))
 ratios %>% 
   left_join(pad) %>% 
@@ -235,7 +234,7 @@ ratios %>%
   theme(legend.position = "bottom") +
   xlab("Plant Area Index") +
   ylab("Mean Amplitude ratio for period 24") +
-  facet_grid(z_class ~ type)
+  facet_grid(strata ~ type)
 ```
 
 Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. 💡 However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
