@@ -195,6 +195,8 @@ However, the buffer ratio did not correlated strongly to total plant area index.
 pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>% 
   rename(x = x_p, y = y_p) %>%
   left_join(read_tsv("data/derived_data/pad.tsv")) %>% 
+  group_by(id, z) %>% 
+  summarise(pad = median(pad)) %>% 
   group_by(id) %>% 
   summarise(pad = sum(pad))
 ratios %>% 
