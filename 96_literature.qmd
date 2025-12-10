@@ -4,4 +4,5 @@ This appendix can be used to take notes on useful literature for the project.
 
 ## To add
 
--   
+-   @ma2025
+-   @hes2025a

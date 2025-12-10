@@ -17,9 +17,15 @@ readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx",
                                col_types = c("date", rep("numeric", 29))) %>% 
   rename_all(tolower) %>% 
   rename(tas_55 = `temp(55)`, hr_55 = `hr(55)`, tas_2 = `temp(2,0)`, hr_2 = `hr(2,0)`, 
-         ts_0.1 = t_avg_10cm, swc_0.1 = vwc_avg_10cm, snet = rg, 
+         ts_0.1 = t_avg_10cm, 
+         swc_0.1 = vwc_avg_10cm, swc_0.2 = vwc_avg_20cm, 
+         swc_0.8 = vwc_avg_80cm, swc_1.4 = vwc_avg_140cm, 
+         swc_1.9 = vwc_avg_190cm, 
+         snet = rg, 
          ws = `vit vent`, pr = pluie) %>% 
-  select(date, tas_55, hr_55, tas_2, hr_2, ts_0.1, swc_0.1, snet, ws, pr) %>% 
+  select(date, tas_55, hr_55, tas_2, hr_2, ts_0.1, 
+         swc_0.1,swc_0.2, swc_0.8, swc_1.4, swc_1.9, 
+         snet, ws, pr) %>% 
   gather(variable, value, -date) %>% 
   ggplot(aes(date, value)) +
   geom_line(col = "lightgrey", alpha = 0.5) +

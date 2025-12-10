@@ -274,8 +274,8 @@ guyaflux <- readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx"
                                sheet = "Gx meteo_2023-2024",
                                col_types = c("date", rep("numeric", 29))) %>% 
   rename_all(tolower) %>% 
-  rename(hr_55 = `hr(55)`, snet = rg, pr = pluie) %>% 
-  select(date, hr_55, snet, pr) %>% 
+  rename(hr_55 = `hr(55)`, snet = rg, pr = pluie, swc_0.8 = vwc_avg_80cm) %>% 
+  select(date, hr_55, snet, pr, swc_0.8) %>% 
   group_by(date = as_date(date)) %>% 
   mutate(pr = sum(pr)) %>% 
   summarise_all(mean) %>% 
@@ -288,9 +288,9 @@ temp <- read_tsv("data/derived_data/fc_all.tsv") %>%
   filter(period == 24) %>% 
   mutate(ratio = power/power_era) %>% 
   filter(type == "air") %>% 
+  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet")) %>% 
   left_join(guyaflux) %>% 
-  filter(!is.na(variable)) %>% 
-  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet"))
+  filter(!is.na(variable))
 ggplot(temp, aes(value, ratio)) +
   geom_point(alpha = .1, aes(col = season)) +
   facet_wrap(~ variable, scales = "free", nrow = 2) +
@@ -309,7 +309,22 @@ ggplot(temp, aes(value, ratio)) +
 temp %>% 
   pivot_wider(names_from = variable, values_from = value) %>% 
   filter(!is.infinite(pr)) %>% 
-  mutate(across(c("ratio", "hr_55", "snet", "pr"), scale)) %>% 
-  lm(ratio ~ season + hr_55 + snet + pr, data = .) %>% 
+  mutate(across(c("ratio", "hr_55", "snet", "pr", "swc_0.8"), scale)) %>% 
+  lm(ratio ~ season + hr_55 + snet + pr + swc_0.8, data = .) %>% 
+  sjPlot::tab_model()
+```
+
+## All descriptors
+
+```{r all_tab}
+#| message: false
+#| warning: false
+temp %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  filter(!is.infinite(pr)) %>% 
+  left_join(topo) %>% 
+  left_join(filter(pad, strata == "understory")) %>% 
+  mutate(across(c("ratio", "hr_55", "snet", "pr", "swc_0.8", "twi", "pad"), scale)) %>% 
+  lm(ratio ~ season + hr_55 + snet + pr + swc_0.8 + twi + pad, data = .) %>% 
   sjPlot::tab_model()
 ```
