@@ -28,6 +28,9 @@ readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx",
          snet, ws, pr) %>% 
   gather(variable, value, -date) %>% 
   ggplot(aes(date, value)) +
+  geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
+            xmax = as_datetime("2023-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
   geom_line(col = "lightgrey", alpha = 0.5) +
   geom_smooth() +
   facet_wrap(~ variable, scales = "free_y") +

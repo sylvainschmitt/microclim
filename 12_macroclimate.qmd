@@ -2,6 +2,7 @@
 #| message: false
 #| include: false
 library(tidyverse)
+library(microclimr)
 ```
 
 # Macroclimate {.unnumbered}
@@ -26,6 +27,8 @@ g_month <- era %>%
   group_by(month = month(time)) %>% 
   summarise(tas = mean(tas)) %>% 
   ggplot(aes(month, tas)) +
+  geom_rect(xmin = 8, xmax = 12,
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank()) +
@@ -42,7 +45,7 @@ g_day <- era %>%
 cowplot::plot_grid(g_year, g_month, g_day)
 ```
 
-## MeteoFrance
+## Debiaising @hes2025
 
 We computed back the correction of @hes2025 (see section 2 in SI) to determine a and b such $T_{ec} = \frac{T_e-b}{a}$ in order to correct ERA5-Land with Meteo France weather station data from Kourou CSG.
 
@@ -109,6 +112,8 @@ g_month <- weather %>%
   group_by(type, month = month(time)) %>% 
   summarise(tas = mean(tas)) %>% 
   ggplot(aes(month, tas, col = type)) +
+  geom_rect(xmin = 8, xmax = 12, group = NA, col = NA,
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank(),
@@ -129,7 +134,68 @@ g_day <- weather %>%
 cowplot::plot_grid(g_year, g_month, g_day)
 ```
 
-## Debiasing
+## Debiaising Fourier
+
+The problem with debiasing of @hes2025 is that it depends on the time frequency used. We therefore also attempted debiasing using the relationship between the Fourier coefficients after decomposition. Overall, apart from period 0, ERA5-Land showed less power than the Meteo-France weather station for all periods. However, it is not obvious how to adjust the coefficients. I would have used differences, ratios, or linear relationships. Looking at the relations between the coefficients for the 0-, 24-, 12- and 6-hour periods across time windows, the strength of the linear relationship decreases with the period. It is strong for the 0-hour period (83% goodness of fit), but decreases quickly and is not significant for the 6-hour period. *Should we use a larger time window and focus only on longer periods?*
+
+```{r ps_debias}
+#| message: false
+#| warning: false
+#| fig-cap: "Power spectrums across 5-days windows for ERA5-Land and MeteoFrance temperature data from Kourou CSG."
+weather_f <- weather %>% 
+  select(time, tas_station, tas_era) %>% 
+  gather(source, tas, -time) %>% 
+  mutate(source = gsub("tas_", "", source)) %>% 
+  group_by(source) %>% 
+  do(fft = fft_roll(
+    data = .,
+    t = 5*24,
+    index_col = "time",
+    temperature_col = "tas",
+    window = "5 days",
+    step = "3 days"
+  )) %>%
+  unnest(fft)
+weather_f %>% 
+  group_by(source, frequency, period) %>% 
+  summarise(sd = sd(power), power = mean(power)) %>% 
+  ggplot(aes(frequency, power+1, fill = source)) +
+  geom_col(position = position_dodge()) +
+  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd), 
+                 position = position_dodge(width = 0.01)) +
+  theme_bw() +
+  xlab("Period [h]") +
+  ylab("Power") +
+  scale_y_log10() +
+  scale_x_continuous(
+    breaks = c(0, 1 / 24, 1 / 12, 1 / 8, 1 / 6),
+    labels = c("0", "24", "12", "8", "6")
+  ) +
+  theme(legend.position = c(0.8, 0.8))
+```
+
+```{r fs_relationships}
+#| message: false
+#| warning: false
+#| fig-cap: "Fourier coefficients relationships for periods 0-, 24-, 12- and 6-hour between ERA5-Land and the MeteoFrance weather station in Kourou CSG."
+weather_f %>% 
+  select(-coefficient) %>% 
+  pivot_wider(names_from = source, values_from = power) %>% 
+  filter(period %in% c(0, 24, 12, 6)) %>% 
+  ggplot(aes(station, era)) +
+  geom_abline() +
+  geom_point(alpha = .1) +
+  theme_bw() +
+  facet_wrap(~ period, scales = "free", labeller = label_both) +
+  geom_smooth(method = "lm") +
+  ggpubr::stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~")),
+  ) +
+  xlab("Meteo-France Power") +
+  ylab("ERA5-Land Power")
+```
+
+## Comparison
 
 ```{r}
 #| message: false
@@ -137,7 +203,7 @@ cowplot::plot_grid(g_year, g_month, g_day)
 #| fig-cap: "ERA5-Land raw and debiased temperature data for Paracou."
 era <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
   mutate(tas_cor = (tas-b)/a) %>% 
-  rename(raw = tas, debiased = tas_cor) %>% 
+  rename(raw = tas, hes2025 = tas_cor) %>% 
   gather(type, tas, -time, -lon, -lat)
 g_year <- era %>% 
   group_by(type, year = year(time)) %>% 
@@ -150,6 +216,8 @@ g_month <- era %>%
   group_by(type, month = month(time)) %>% 
   summarise(tas = mean(tas)) %>% 
   ggplot(aes(month, tas, col = type)) +
+  geom_rect(xmin = 8, xmax = 12, group = NA, col = NA,
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank()) +

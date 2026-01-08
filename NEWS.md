@@ -1,3 +1,4 @@
+-   microclim 0.1.0.9008: season on figs, Fourier debiasing, 3-months decomposition of microclimate, semilog power spectrums
 -   microclim 0.1.0.9007: swc at different depth from Guyaflux (REW instead?) and temporal+spatial model
 -   microclim 0.1.0.9006: buffer temporal descriptors
 -   microclim 0.1.0.9005: abandoned test of longer times series and calibration (notes in pages)

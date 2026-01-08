@@ -37,16 +37,15 @@ We again find the 24-hr period bearing most powers with increased power in air t
 ```{r spectrum}
 #| message: false
 #| warning: false
-#| fig-cap: "Power spectrum across captors. The period 0 has been removed for increased lisbility."
+#| fig-cap: "Power spectrum across captors."
 fc_all <- read_tsv("data/derived_data/fc_all.tsv") %>% 
   mutate(type = factor(type, levels = c("air", "surface", "soil")))
 fc_all %>% 
-  filter(period > 0) %>% 
   group_by(type, frequency, period) %>% 
   summarise(sd = sd(power), power = mean(power)) %>% 
-  ggplot(aes(frequency, power)) +
+  ggplot(aes(frequency, power+1)) +
   geom_col() +
-  geom_linerange(aes(ymin = power-sd, ymax = power+sd)) +
+  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd)) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
@@ -55,7 +54,8 @@ fc_all %>%
     labels = c("0", "24", "12", "8", "6", "3")
   ) +
   theme(legend.position.inside = c(0.8, 0.8)) +
-  facet_wrap(~ type, nrow = 3)
+  facet_wrap(~ type, nrow = 3) +
+  scale_y_log10()
 ```
 
 The power similarly increases during the dry season. Interestingly we can see that the approach is pretty resilient to unfiltered data even if we can easily detect anomalies in soil power due to captors removed from the soil (💡we may want to filter them later).
@@ -75,14 +75,90 @@ fc_all %>%
   facet_wrap(~ type, nrow = 3)
 ```
 
-## Buffer
+## Decomposition 3-months
 
-Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a buffer effect with decreased amplitude.
+For comparison, we used a power spectrum to compare our five-day Fourier transform decomposition with a 90-day decomposition using a sliding window of 45 days. Interestingly, we found a very similar spectrum with similar values for the 24 harmonics.
 
-```{r buffer24}
+```{r ps_3months}
 #| message: false
 #| warning: false
-#| fig-cap: "HOBO power against ERA5-Land power for the period 24hr."
+#| fig-cap: "Power spectrum across captors for 3-months windows sliding by 45 days."
+fc_month <- read_tsv("data/derived_data/tomst.tsv") %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  select(date, id, t_soil, t_surface, t_air) %>% 
+  gather(type, temperature, -date, -id) %>% 
+  group_by(id, type, date = floor_date(date, "1 hour")) %>% 
+  summarise(temperature = mean(temperature)) %>% 
+  group_by(id, type) %>% 
+  do(fft = fft_roll(
+    data = .,
+    t = 3*30*24,
+    index_col = "date",
+    temperature_col = "temperature",
+    window = "90 days",
+    step = "45 days"
+  )) %>%
+  unnest(fft) %>% 
+  mutate(type = gsub("t_", "", type)) %>% 
+  mutate(type = factor(type, levels = c("air", "surface", "soil")))
+fc_month %>% 
+  group_by(type, frequency, period) %>% 
+  summarise(sd = sd(power), power = mean(power)) %>% 
+  ggplot(aes(frequency, power+1)) +
+  geom_col() +
+  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd)) +
+  theme_bw() +
+  xlab("Period [h]") +
+  ylab("Power") +
+  scale_x_continuous(
+    breaks = c(0, 1 / 24, 1 / 12, 1 / 8, 1 / 6, 1 / 3),
+    labels = c("0", "24", "12", "8", "6", "3")
+  ) +
+  theme(legend.position.inside = c(0.8, 0.8)) +
+  facet_wrap(~ type, nrow = 3) +
+  scale_y_log10()
+```
+
+```{r ps_joint}
+#| message: false
+#| warning: false
+#| fig-cap: "Power spectrums across captors comparing 5-days and 3-months windows. Shown period have been filtered to the 5-days spectrum above 6."
+bind_rows(
+  fc_month %>% 
+    group_by(type, frequency, period) %>% 
+    summarise(sd = sd(power), power = mean(power)) %>% 
+    mutate(windows = "5 days"),
+  fc_all %>% 
+    group_by(type, frequency, period) %>% 
+    summarise(sd = sd(power), power = mean(power)) %>% 
+    mutate(windows = "90 days")
+) %>% 
+  filter(period %in% fc_all$period) %>% 
+  filter(frequency <= 1/6) %>% 
+  ggplot(aes(frequency, power+1, fill = windows)) +
+  geom_col(position = position_dodge()) +
+  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd), 
+                 position = position_dodge(width = 0.01)) +
+  theme_bw() +
+  xlab("Period [h]") +
+  ylab("Power") +
+  theme(legend.position.inside = c(0.8, 0.8)) +
+  facet_wrap(~ type, nrow = 3) +
+  scale_y_log10() +
+  scale_x_continuous(
+    breaks = c(0, 1 / 24, 1 / 12, 1 / 8, 1 / 6),
+    labels = c("0", "24", "12", "8", "6")
+  )
+```
+
+## Total power
+
+We quickly compared the total power of each microclimate type with that of the macroclimate, highlighting the dissipation effect of the microclimate, which increases from the air to the soil.
+
+```{r power}
+#| message: false
+#| warning: false
+#| fig-cap: "Total power of macroclimate and microclimate across air, surface and soil captors. Boxplots represent the temporal variation across 5-day windows and spatial  variation across plots and forests."
 era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
   mutate(tas = (tas-13.5)/0.48) %>% 
   fft_roll(t = 5*24,
@@ -91,6 +167,30 @@ era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>%
   mutate(date = as_date(datetime)) %>% 
   select(date, period, power) %>% 
   rename(power_era = power)
+bind_rows(
+  fc_all %>% 
+    mutate(date = as_date(datetime)),
+  era_f %>% 
+    mutate(id = 0, type = "era", power = power_era)
+) %>% 
+  group_by(id, type, date) %>% 
+  summarise(power = sum(power, na.rm = TRUE)) %>% 
+  ggplot(aes(type, power)) +
+  geom_boxplot() +
+  theme_bw() +
+  xlab("") +
+  ylab("Total power")
+```
+
+## Buffer
+
+Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a buffer effect with decreased amplitude.
+
+```{r buffer24}
+#| message: false
+#| warning: false
+#| fig-cap: "HOBO power against ERA5-Land power for the period 24hr."
+
 read_tsv("data/derived_data/fc_all.tsv") %>% 
   mutate(date = as_date(datetime)) %>% 
   left_join(era_f) %>% 
@@ -312,6 +412,17 @@ temp %>%
   mutate(across(c("ratio", "hr_55", "snet", "pr", "swc_0.8"), scale)) %>% 
   lm(ratio ~ season + hr_55 + snet + pr + swc_0.8, data = .) %>% 
   sjPlot::tab_model()
+```
+
+```{r}
+temp %>% 
+  pivot_wider(names_from = variable, values_from = value) %>% 
+  select(id, type, season, date, ratio, swc_0.8) %>% 
+  gather(variable, value, -id, -type, -season, -date) %>% 
+  ggplot(aes(date, value, group = id)) +
+  geom_line() +
+  facet_wrap(~ variable, nrow = 4, scales = "free_y") +
+  theme_bw()
 ```
 
 ## All descriptors

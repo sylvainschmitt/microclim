@@ -80,12 +80,15 @@ We can have a look tot the temporal series for sensor 1:
 ```{r measfig}
 #| message: false
 #| warning: false
-#| fig-cap: "Sensor 1 raw data."
+#| fig-cap: "Sensor 1 raw data. The yellow area indicates the dry season."
 read_tsv("data/derived_data/tomst.tsv") %>% 
   filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
   filter(id == 1) %>% 
   gather(variable, value, -sensornum, -date, -id) %>% 
   ggplot(aes(date, value)) +
+  geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
+            xmax = as_datetime("2023-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
   geom_line() +
   facet_wrap(~ variable, scales = "free_y") +
   theme_bw() +

@@ -53,9 +53,9 @@ era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>%
 era_f %>% 
   group_by(frequency, period) %>% 
   summarise(sd = sd(power), power = mean(power)) %>% 
-  ggplot(aes(frequency, power)) +
+  ggplot(aes(frequency, power+1)) +
   geom_col() +
-  geom_linerange(aes(ymin = power-sd, ymax = power+sd)) +
+  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd)) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
@@ -64,7 +64,7 @@ era_f %>%
     labels = c("0", "24", "12", "8", "6", "3")
   ) +
   theme(legend.position.inside = c(0.8, 0.8)) +
-  scale_y_sqrt()
+  scale_y_log10()
 ```
 
 ```{r power24}
