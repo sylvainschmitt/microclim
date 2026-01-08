@@ -67,6 +67,9 @@ The power similarly increases during the dry season. Interestingly we can see th
 fc_all %>% 
   filter(period == 24) %>% 
   ggplot(aes(datetime, power)) +
+  geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
+            xmax = as_datetime("2023-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.25, fill  = "#fff4e0") +
   geom_line(aes(group = paste(id, type))) +
   theme_bw() +
   xlab("") +
@@ -415,11 +418,15 @@ temp %>%
 ```
 
 ```{r}
+#| message: false
+#| warning: false
 temp %>% 
   pivot_wider(names_from = variable, values_from = value) %>% 
   select(id, type, season, date, ratio, swc_0.8) %>% 
   gather(variable, value, -id, -type, -season, -date) %>% 
   ggplot(aes(date, value, group = id)) +
+  geom_rect(xmin = as_date("2023-8-1"), xmax = as_date("2023-12-1"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.25, fill  = "#fff4e0") +
   geom_line() +
   facet_wrap(~ variable, nrow = 4, scales = "free_y") +
   theme_bw()

@@ -25,7 +25,7 @@ readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx",
   left_join(read_tsv("data/raw_data/macro/era5_station.tsv") %>% 
               mutate(tas = (tas-13.5)/0.48)) %>% 
   na.omit() %>% 
-  ggplot(aes(tas_tower, tas)) +
+  ggplot(aes(tas_tower, tas, col = yday(time))) +
   geom_abline() +
   geom_point() +
   theme_bw() +
@@ -34,7 +34,8 @@ readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx",
     aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))
   ) +
   xlab("Temperature Guyaflux") +
-  ylab("Temperature ERA5-Land")
+  ylab("Temperature ERA5-Land") +
+  scale_color_viridis_c("Day")
 ```
 
 ## Power spectrum
@@ -74,6 +75,12 @@ era_f %>%
 era_f %>% 
   filter(period == 24) %>% 
   ggplot(aes(datetime, power)) +
+  geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
+            xmax = as_datetime("2023-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.25, fill  = "#fff4e0") +
+  geom_rect(xmin = as_datetime("2024-8-1 00:00:00"), 
+            xmax = as_datetime("2024-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.25, fill  = "#fff4e0") +
   geom_line() +
   geom_point(aes(col = month(datetime) %in% 8:11)) +
   theme_bw() +
