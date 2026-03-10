@@ -137,13 +137,8 @@ Raw Tomst variables (column with no names):
 Paracou Tomst variables:
 
 -   **date**: date time every 15 minutes
-
 -   **sensornum**: tomst manufacturer ID
-
 -   **t_soil**: temperature soil (°C), 8-cm below ground
-
 -   **t_surface**: temperature surface (°C), just above ground
-
 -   **t_air**: temperature air (°C), 15-cm above ground
-
 -   **swc**: soil water content or volumetric moisture (%), 14-cm depth indirect electrical measurement

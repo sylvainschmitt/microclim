@@ -40,12 +40,17 @@ We again find the 24-hr period bearing most powers with increased power in air t
 #| fig-cap: "Power spectrum across captors."
 fc_all <- read_tsv("data/derived_data/fc_all.tsv") %>% 
   mutate(type = factor(type, levels = c("air", "surface", "soil")))
-fc_all %>% 
+t <- fc_all %>% 
   group_by(type, frequency, period) %>% 
-  summarise(sd = sd(power), power = mean(power)) %>% 
-  ggplot(aes(frequency, power+1)) +
+  summarise(sd = sd(power), power = mean(power))
+t %>% 
+  filter(period != 0) %>%
+  ggplot(aes(frequency, power)) +
   geom_col() +
-  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd)) +
+  geom_linerange(aes(ymin = power-sd, ymax = power+sd)) +
+  geom_text(x = 1/12, y = 2,
+            aes(label = paste0("Mean: ", round(power), "±", round(sd))), 
+            data = filter(t, period ==0)) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
@@ -54,8 +59,7 @@ fc_all %>%
     labels = c("0", "24", "12", "8", "6", "3")
   ) +
   theme(legend.position.inside = c(0.8, 0.8)) +
-  facet_wrap(~ type, nrow = 3) +
-  scale_y_log10()
+  facet_wrap(~ type, nrow = 3)
 ```
 
 The power similarly increases during the dry season. Interestingly we can see that the approach is pretty resilient to unfiltered data even if we can easily detect anomalies in soil power due to captors removed from the soil (💡we may want to filter them later).
@@ -104,12 +108,17 @@ fc_month <- read_tsv("data/derived_data/tomst.tsv") %>%
   unnest(fft) %>% 
   mutate(type = gsub("t_", "", type)) %>% 
   mutate(type = factor(type, levels = c("air", "surface", "soil")))
-fc_month %>% 
+t <- fc_month %>% 
   group_by(type, frequency, period) %>% 
-  summarise(sd = sd(power), power = mean(power)) %>% 
-  ggplot(aes(frequency, power+1)) +
+  summarise(sd = sd(power), power = mean(power))
+t %>% 
+  filter(period != 0) %>%
+  ggplot(aes(frequency, power)) +
   geom_col() +
-  geom_linerange(aes(ymin = power+1-sd, ymax = power+1+sd)) +
+  geom_linerange(aes(ymin = power-sd, ymax = power+sd)) +
+  geom_text(x = 1/12, y = 1,
+            aes(label = paste0("Mean: ", round(power), "±", round(sd))), 
+            data = filter(t, period ==0)) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
@@ -118,8 +127,7 @@ fc_month %>%
     labels = c("0", "24", "12", "8", "6", "3")
   ) +
   theme(legend.position.inside = c(0.8, 0.8)) +
-  facet_wrap(~ type, nrow = 3) +
-  scale_y_log10()
+  facet_wrap(~ type, nrow = 3)
 ```
 
 ```{r ps_joint}
@@ -162,8 +170,8 @@ We quickly compared the total power of each microclimate type with that of the m
 #| message: false
 #| warning: false
 #| fig-cap: "Total power of macroclimate and microclimate across air, surface and soil captors. Boxplots represent the temporal variation across 5-day windows and spatial  variation across plots and forests."
-era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
-  mutate(tas = (tas-13.5)/0.48) %>% 
+era_f <- read_tsv("data/derived_data/era5_cor.tsv") %>% 
+  filter(type == "Fourier") %>% 
   fft_roll(t = 5*24,
            index_col = "time",
            temperature_col = "tas") %>% 
@@ -193,7 +201,6 @@ Comparing HOBO power against ERA5-Land power for the period 24hr we see mainly a
 #| message: false
 #| warning: false
 #| fig-cap: "HOBO power against ERA5-Land power for the period 24hr."
-
 read_tsv("data/derived_data/fc_all.tsv") %>% 
   mutate(date = as_date(datetime)) %>% 
   left_join(era_f) %>% 
@@ -233,6 +240,44 @@ read_tsv("data/derived_data/fc_all.tsv") %>%
   ylab("Amplitude ratio for the period 24-hr") +
   xlab("") +
   theme(legend.position = "bottom")
+```
+
+```{r 24_vs_mean}
+#| message: false
+#| warning: false
+#| fig-cap: Mean temperature vs. 24-h amplitude ratios of HOBO microclimate sensors against macroclimate for air, surface and soil sensors at Paracou. The point represents the median, the thick line the 50 percent distribution and the thine line the 90 percent distribution.
+read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(period %in% c(0,12)) %>% 
+  select(-coefficient, -frequency) %>% 
+  na.omit() %>% 
+  mutate(ratio = power/power_era) %>% 
+  select(-power, -power_era) %>% 
+  mutate(period = paste0("period_", period)) %>% 
+  group_by(id, type, period) %>% 
+  summarise(q05 = quantile(ratio, .05),
+            q25 = quantile(ratio, .25),
+            q5 = quantile(ratio, .5),
+            q75 = quantile(ratio, .75),
+            q95 = quantile(ratio, .95)) %>% 
+  gather(metric, value, -type, -period, -id) %>% 
+  mutate(period_metric = paste0(period, "_", metric)) %>% 
+  select(-period, -metric) %>% 
+  pivot_wider(names_from = period_metric, values_from = value) %>% 
+  ggplot(aes(period_0_q5, period_12_q5, col = type)) +
+  geom_vline(xintercept = 1, col = "darkgrey") +
+  geom_hline(yintercept = 1, col = "darkgrey") +
+  geom_segment(aes(x = period_0_q25, xend = period_0_q75), alpha = .5) +
+  geom_segment(aes(x = period_0_q05, xend = period_0_q95), linewidth = .2, alpha = .5) +
+  geom_segment(aes(y = period_12_q25, yend = period_12_q75), alpha = .5) +
+  geom_segment(aes(y = period_12_q05, yend = period_12_q95), linewidth = .2, alpha = .5) +
+  geom_point() +
+  theme_bw() +
+  # ggrepel::geom_text_repel(aes(label = site), col = "black") +
+  # scale_color_manual("", values = c("#a9d9e5", "#c89867")) +
+  xlab("Mean temperature ratio") +
+  ylab("24-h amplitude ratio")
 ```
 
 ## Qualitative descriptors

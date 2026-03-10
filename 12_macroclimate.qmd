@@ -9,7 +9,7 @@ library(microclimr)
 
 ## ERA5-Land
 
-@muñoz-sabater2021
+We retrieved macroclimatic data from ERA5-Land [@muñoz-sabater2021] at both Paracou and at the nearest weather station from Kourou space center (CSG).
 
 ```{r era}
 #| message: false
@@ -47,7 +47,7 @@ cowplot::plot_grid(g_year, g_month, g_day)
 
 ## Debiaising @hes2025
 
-We computed back the correction of @hes2025 (see section 2 in SI) to determine a and b such $T_{ec} = \frac{T_e-b}{a}$ in order to correct ERA5-Land with Meteo France weather station data from Kourou CSG.
+We computed back the correction of @hes2025 (see section 2 in SI) to determine a and b such $T_{ec} = \frac{T_e-b}{a}$ in order to correct ERA5-Land with Meteo France weather station data from Kourou CSG at hourly time step.
 
 ```{r weather_rel}
 #| message: false
@@ -91,6 +91,8 @@ weather %>%
 ```
 
 > The result differ from @hes2025 where $a=0.65$ and $b=8.72$. ⚠️ this correction as a strong effect on the resulting microclimatic buffer.
+
+However the result is good to remove hour bias but increases bias at monthly and yearly timesteps.
 
 ```{r weather}
 #| message: false
@@ -173,7 +175,7 @@ join %>%
 fc <- join %>% 
   arrange(time) %>%
   mutate(tas_station = zoo::na.approx(tas_station)) %>% 
-  filter(year(time) == 2023:2024) %>% 
+  filter(year(time) %in% 2023:2024) %>% 
   select(-date) %>% 
   gather(source, tas, -time) %>% 
   mutate(source = gsub("tas_", "", source)) %>% 
@@ -181,13 +183,13 @@ fc <- join %>%
   do(fft = fft_tab(.$tas, 24*(365+366))) %>%
   unnest(fft)
 g_sub <- fc %>% 
+  filter(period != 0) %>% 
   filter(period >= 12) %>% 
-  ggplot(aes(frequency, power+1, fill = source)) +
+  ggplot(aes(frequency, power, fill = source)) +
   geom_col(position = position_dodge()) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
-  scale_y_log10() +
   scale_x_continuous(
     breaks = c(0, 1/(30*24), 1/(7*24), 1/48, 1/24, 1/12),
     labels = c("0", "1m", "7d", "48", "24", "12")
@@ -195,20 +197,21 @@ g_sub <- fc %>%
   theme(legend.position = "none", 
         axis.title = element_blank())
 fc %>% 
-  ggplot(aes(frequency, power+1, fill = source)) +
+  filter(period != 0) %>% 
+  ggplot(aes(frequency, power, fill = source)) +
   geom_col(position = position_dodge()) +
   theme_bw() +
   xlab("Period [h]") +
   ylab("Power") +
-  scale_y_log10() +
   scale_x_continuous(
     breaks = c(0, 1 / 24, 1 / 12, 1 / 8, 1 / 6),
     labels = c("0", "24", "12", "8", "6")
   ) +
   theme(legend.position = "bottom") +
-  annotation_custom(ggplotGrob(g_sub), 
-                    ymin = 2, ymax = 30,
-                    xmin = 1/12, xmax = 1/4)
+  annotation_custom(ggplotGrob(g_sub),
+                    ymin = 1, ymax = 3.5,
+                    xmin = 1/12, xmax = 1/2) +
+  annotate("text", x=1/24, y=2, label = paste0("Mean:", round(fc$power[1],2)))
 ```
 
 ```{r ratios}
@@ -216,27 +219,31 @@ fc %>%
 #| warning: false
 #| fig-cap: "Power spectrums ratios across 1-year for ERA5-Land and MeteoFrance temperature data from Kourou CSG."
 ratios <- fc %>% 
-  select(-power) %>% 
-  pivot_wider(names_from = source, values_from = coefficient) %>% 
-  mutate(ratio = era/station)
+  mutate(amplitude = Mod(coefficient)) %>% 
+  select(-power, -coefficient) %>% 
+  pivot_wider(names_from = source, values_from = amplitude) %>% 
+  mutate(ratio = station/era)
 ratios %>% 
-  filter(frequency <= 1/6) %>% 
-  ggplot(aes(frequency, Mod(ratio))) +
+  ggplot(aes(frequency, log(ratio))) +
   geom_point() +
   theme_bw() +
-  scale_y_log10() +
   scale_x_continuous(
     breaks = c(0, 1/(7*24), 1/48, 1/24, 1/12, 1/8, 1/6),
     labels = c("0", "Week", "48", "24", "12", "8", "6")
   ) +
   xlab("Period [h]") +
-  ylab("Mod of the ratio of coefficients for ERA / Station") +
-  geom_smooth(method = "lm", se = FALSE)
+  ylab("Mod of the ratio of coefficients for Station/Era") +
+  geom_smooth(method = "lm", se = FALSE) +
+    ggpubr::stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..adj.rr.label.., sep = "~~~~"))
+  )
 ```
 
 ## Reconstruction at Paracou
 
-```{r}
+Using adjustment values between Fourier coefficients of the weather station and ERA5-Land we can then de-bias ERA5-Land at the Paracou station. This resulted in higher predicted variation of temperature than the one smoothed by ERA5-Land reanalysis. However note that the extremes might be a bit exaggerated.
+
+```{r paracou_fourier_debias_1}
 #| message: false
 #| warning: false
 era <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
@@ -245,40 +252,43 @@ era <- read_tsv("data/raw_data/macro/era5.tsv") %>%
 fc_cor <- fft_tab(era$tas, 24*(365+366)) %>% 
   left_join(select(ratios, frequency, period, ratio)) %>% 
   mutate(coefficient_c = coefficient*ratio)
-era$tas_c0 <- fft_reconstruct(
-  f = fc_cor$coefficient,
-  freq = fc_cor$frequency[-1], 
-  time = (1:(24*(365+366)))-1
-)
-era$tas_c1 <- fft_reconstruct(
+era$tas_corf <- fft_reconstruct(
   f = fc_cor$coefficient_c,
   freq = fc_cor$frequency[-1], 
   time = (1:(24*(365+366)))-1
 )
 era %>% 
-  filter(time < as_datetime("2023-01-02 23:00:00")) %>% 
+  filter(time < as_datetime("2023-01-20 23:00:00")) %>% 
   gather(source, tas, -time) %>% 
-  ggplot(aes(x = time, y = tas)) +
+  mutate(source = recode(source,
+                         "tas" = "station",
+                         "tas_corf" = "Fourier"
+                         )) %>% 
+  ggplot(aes(x = time, y = tas, col = source)) +
   geom_line() +
   theme_bw() +
-  facet_wrap(~ source, nrow = 3)
+  xlab("") + 
+  ylab("Temperature [°C]") 
 ```
 
-```{r}
+Interestingly, we find almost back the debaising of @hes2025 with huorly variation but now the monthly variations are not exaggerated as in @hes2025, which confirm the interest of the approach for a debiasing at multiple time frequencies.
+
+```{r paracou_fourier_debias_2}
 #| message: false
 #| warning: false
 #| fig-cap: "ERA5-Land raw and debiased temperature data for Paracou."
 era <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
+  filter(year(time) %in% 2023:2024) %>% 
   mutate(tas_cor = (tas-b)/a) %>% 
-  rename(raw = tas, hes2025 = tas_cor) %>% 
+  rename(raw = tas, hes2025 = tas_cor) 
+era$Fourier <- fft_reconstruct(
+  f = fc_cor$coefficient_c,
+  freq = fc_cor$frequency[-1], 
+  time = (1:(24*(365+366)))-1
+)
+era <- era %>% 
   gather(type, tas, -time, -lon, -lat)
-g_year <- era %>% 
-  group_by(type, year = year(time)) %>% 
-  summarise(tas = mean(tas)) %>% 
-  ggplot(aes(year, tas, col = type)) +
-  geom_line() +
-  theme_bw() +
-  theme(axis.title = element_blank())
+write_tsv(era, "data/derived_data/era5_cor.tsv")
 g_month <- era %>% 
   group_by(type, month = month(time)) %>% 
   summarise(tas = mean(tas)) %>% 
@@ -298,5 +308,5 @@ g_day <- era %>%
   geom_line() +
   theme_bw() +
   theme(axis.title = element_blank())
-cowplot::plot_grid(g_year, g_month, g_day)
+cowplot::plot_grid(g_month, g_day, nrow = 2)
 ```

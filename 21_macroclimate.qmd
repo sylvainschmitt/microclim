@@ -22,8 +22,8 @@ readxl::read_excel("data/raw_data/guyaflux/TourAFlux-2023-2024.xlsx",
   rename(tas = `temp(55)`) %>% 
   select(date, tas) %>% 
   rename(time = date, tas_tower = tas) %>% 
-  left_join(read_tsv("data/raw_data/macro/era5_station.tsv") %>% 
-              mutate(tas = (tas-13.5)/0.48)) %>% 
+  left_join(read_tsv("data/derived_data/era5_cor.tsv") %>% 
+              filter(type == "Fourier")) %>% 
   na.omit() %>% 
   ggplot(aes(tas_tower, tas, col = yday(time))) +
   geom_abline() +
@@ -46,12 +46,13 @@ The power spectrum revealed the expected daily strong power at 24-h period but a
 #| message: false
 #| warning: false
 #| fig-cap: "Raw ERA5-Land power spectrum."
-era_f <- read_tsv("data/raw_data/macro/era5.tsv") %>% 
-  mutate(tas = (tas-8.72)/0.65) %>% 
+era_f <- read_tsv("data/derived_data/era5_cor.tsv") %>% 
+  filter(type == "Fourier") %>% 
   fft_roll(t = 5*24,
            index_col = "time",
            temperature_col = "tas")
 era_f %>% 
+  filter(period != 0) %>% 
   group_by(frequency, period) %>% 
   summarise(sd = sd(power), power = mean(power)) %>% 
   ggplot(aes(frequency, power+1)) +
@@ -65,7 +66,7 @@ era_f %>%
     labels = c("0", "24", "12", "8", "6", "3")
   ) +
   theme(legend.position.inside = c(0.8, 0.8)) +
-  scale_y_log10()
+  annotate("text", x=3/24, y=6, label = paste0("Mean:", round(era_f$power[1],2)))
 ```
 
 ```{r power24}
