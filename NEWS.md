@@ -1,3 +1,4 @@
+-   microclim 0.1.0.9011: Updated with two hydric years (near the end)
 -   microclim 0.1.0.9010: Fourier debiasing 2, updated microclim, updated figs
 -   microclim 0.1.0.9009: Fourier debiasing 2
 -   microclim 0.1.0.9008: season on figs, Fourier debiasing, 3-months decomposition of microclimate, semilog power spectrums

@@ -27,7 +27,52 @@ fc_all <- read_tsv("data/derived_data/tomst.tsv") %>%
   )) %>%
   unnest(fft) %>% 
   mutate(type = gsub("t_", "", type))
+write_tsv(fc_all, "data/derived_data/fc_all0.tsv")
+fc_all <- read_tsv("data/raw_data/micro/test_sensor-project.tsv") %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  select(date, id, t_soil, t_surface, t_air) %>% 
+  gather(type, temperature, -date, -id) %>% 
+  group_by(id, type, date = floor_date(date, "1 hour")) %>% 
+  summarise(temperature = mean(temperature)) %>% 
+  group_by(id, type) %>% 
+  do(fft = fft_roll(
+    data = .,
+    t = 5*24,
+    index_col = "date",
+    temperature_col = "temperature",
+    window = "5 days",
+    step = "3 days"
+  )) %>%
+  unnest(fft) %>% 
+  mutate(type = gsub("t_", "", type))
+fc_all <- fc_all %>% 
+  mutate(season = ifelse(month(datetime) %in% 8:11, "dry", "wet")) %>% 
+  mutate(hydric_year = ifelse(datetime >= as_datetime("2023-8-1 00:00:00"),
+                              "2023-2024", NA)) %>% 
+  mutate(hydric_year = ifelse(datetime >= as_datetime("2024-8-1 00:00:00"),
+                              "2024-2025", hydric_year)) %>% 
+  mutate(hydric_year = ifelse(datetime >= as_datetime("2025-8-1 00:00:00"),
+                              NA, hydric_year))
 write_tsv(fc_all, "data/derived_data/fc_all.tsv")
+fc_month <- read_tsv("data/raw_data/micro/test_sensor-project.tsv") %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  select(date, id, t_soil, t_surface, t_air) %>% 
+  gather(type, temperature, -date, -id) %>% 
+  group_by(id, type, date = floor_date(date, "1 hour")) %>% 
+  summarise(temperature = mean(temperature)) %>% 
+  group_by(id, type) %>% 
+  do(fft = fft_roll(
+    data = .,
+    t = 3*30*24,
+    index_col = "date",
+    temperature_col = "temperature",
+    window = "90 days",
+    step = "45 days"
+  )) %>%
+  unnest(fft) %>% 
+  mutate(type = gsub("t_", "", type)) %>% 
+  mutate(type = factor(type, levels = c("air", "surface", "soil")))
+write_tsv(fc_month, "data/derived_data/fc_month.tsv")
 ```
 
 ## Decomposition
@@ -74,6 +119,16 @@ fc_all %>%
   geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
             xmax = as_datetime("2023-12-1 00:00:00"), 
             ymin = -Inf, ymax = Inf, alpha = 0.25, fill  = "#fff4e0") +
+  geom_rect(xmin = as_datetime("2024-8-1 00:00:00"), 
+            xmax = as_datetime("2024-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
+  geom_rect(xmin = as_datetime("2025-8-1 00:00:00"), 
+            xmax = as_datetime("2025-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
+  geom_vline(xintercept = c(as_datetime("2023-8-1 00:00:00"),
+                            as_datetime("2024-8-1 00:00:00"),
+                            as_datetime("2025-8-1 00:00:00")),
+             linetype = "dashed", col = "red") +
   geom_line(aes(group = paste(id, type))) +
   theme_bw() +
   xlab("") +
@@ -90,24 +145,7 @@ For comparison, we used a power spectrum to compare our five-day Fourier transfo
 #| message: false
 #| warning: false
 #| fig-cap: "Power spectrum across captors for 3-months windows sliding by 45 days."
-fc_month <- read_tsv("data/derived_data/tomst.tsv") %>% 
-  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
-  select(date, id, t_soil, t_surface, t_air) %>% 
-  gather(type, temperature, -date, -id) %>% 
-  group_by(id, type, date = floor_date(date, "1 hour")) %>% 
-  summarise(temperature = mean(temperature)) %>% 
-  group_by(id, type) %>% 
-  do(fft = fft_roll(
-    data = .,
-    t = 3*30*24,
-    index_col = "date",
-    temperature_col = "temperature",
-    window = "90 days",
-    step = "45 days"
-  )) %>%
-  unnest(fft) %>% 
-  mutate(type = gsub("t_", "", type)) %>% 
-  mutate(type = factor(type, levels = c("air", "surface", "soil")))
+fc_month <- read_tsv("data/derived_data/fc_month.tsv")
 t <- fc_month %>% 
   group_by(type, frequency, period) %>% 
   summarise(sd = sd(power), power = mean(power))
@@ -266,18 +304,51 @@ read_tsv("data/derived_data/fc_all.tsv") %>%
   select(-period, -metric) %>% 
   pivot_wider(names_from = period_metric, values_from = value) %>% 
   ggplot(aes(period_0_q5, period_12_q5, col = type)) +
-  geom_vline(xintercept = 1, col = "darkgrey") +
-  geom_hline(yintercept = 1, col = "darkgrey") +
   geom_segment(aes(x = period_0_q25, xend = period_0_q75), alpha = .5) +
   geom_segment(aes(x = period_0_q05, xend = period_0_q95), linewidth = .2, alpha = .5) +
   geom_segment(aes(y = period_12_q25, yend = period_12_q75), alpha = .5) +
   geom_segment(aes(y = period_12_q05, yend = period_12_q95), linewidth = .2, alpha = .5) +
   geom_point() +
   theme_bw() +
-  # ggrepel::geom_text_repel(aes(label = site), col = "black") +
-  # scale_color_manual("", values = c("#a9d9e5", "#c89867")) +
   xlab("Mean temperature ratio") +
   ylab("24-h amplitude ratio")
+```
+
+```{r 24_vs_mean_2}
+#| message: false
+#| warning: false
+#| fig-cap: Mean temperature vs. 24-h amplitude ratios of HOBO microclimate sensors against macroclimate for air, surface and soil sensors at Paracou. The point represents the median, the thick line the 50 percent distribution and the thine line the 90 percent distribution.
+read_tsv("data/derived_data/fc_all.tsv") %>% 
+  mutate(date = as_date(datetime)) %>% 
+  left_join(era_f) %>% 
+  filter(period %in% c(0,12)) %>% 
+  select(-coefficient, -frequency) %>% 
+  na.omit() %>% 
+  mutate(ratio = power/power_era) %>% 
+  select(-power, -power_era) %>% 
+  mutate(period = paste0("period_", period)) %>% 
+  na.omit() %>% 
+  group_by(id, type, period, hydric_year, season) %>% 
+  summarise(q05 = quantile(ratio, .05),
+            q25 = quantile(ratio, .25),
+            q5 = quantile(ratio, .5),
+            q75 = quantile(ratio, .75),
+            q95 = quantile(ratio, .95)) %>% 
+  gather(metric, value, -type, -period, -id, -hydric_year, -season) %>% 
+  mutate(period_metric = paste0(period, "_", metric)) %>% 
+  ungroup() %>% 
+  select(-period, -metric) %>% 
+  pivot_wider(names_from = period_metric, values_from = value) %>% 
+  ggplot(aes(period_0_q5, period_12_q5, col = type)) +
+  geom_segment(aes(x = period_0_q25, xend = period_0_q75), alpha = .5) +
+  geom_segment(aes(x = period_0_q05, xend = period_0_q95), linewidth = .2, alpha = .5) +
+  geom_segment(aes(y = period_12_q25, yend = period_12_q75), alpha = .5) +
+  geom_segment(aes(y = period_12_q05, yend = period_12_q95), linewidth = .2, alpha = .5) +
+  geom_point() +
+  theme_bw() +
+  xlab("Mean temperature ratio") +
+  ylab("24-h amplitude ratio") +
+  facet_grid(hydric_year ~ season)
 ```
 
 ## Qualitative descriptors
@@ -294,20 +365,22 @@ ratios <- read_tsv("data/derived_data/fc_all.tsv") %>%
   filter(!is.na(power_era)) %>% 
   filter(period == 24) %>% 
   mutate(ratio = power/power_era) %>% 
-  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet")) %>% 
-  group_by(type, season, id) %>% 
-  summarise(ratio = mean(ratio))
+  group_by(type, hydric_year, season, id) %>% 
+  summarise(ratio = mean(ratio)) %>% 
+  na.omit()
 read_tsv("data/derived_data/coords.tsv") %>% 
   select(id, light) %>% 
   left_join(ratios) %>% 
-  ggplot(aes(light, ratio, fill = season)) +
+  na.omit() %>% 
+  mutate(type = factor(type, levels = c("air", "surface", "soil"))) %>% 
+  ggplot(aes(light, ratio, fill = paste(hydric_year, season))) +
   geom_boxplot() +
   facet_wrap(~ type, nrow = 3) +
   theme_bw() +
   coord_flip() +
   ylab("Mean Amplitude ratio for period 24-hr") +
   xlab("") +
-  scale_fill_discrete("Season")
+  scale_fill_discrete("Seasons")
 ```
 
 Similarly the buffer ratio is stronger in bottomlands than plateaus, but even stronger in slopes, especially in wet season and air.
@@ -323,13 +396,16 @@ read_tsv("data/derived_data/coords.tsv") %>%
                                         "Mid slope", "Lower slope",
                                         "Bottomland"))) %>% 
   left_join(ratios) %>% 
-  ggplot(aes(topography, ratio, fill = season)) +
+  na.omit() %>% 
+  mutate(type = factor(type, levels = c("air", "surface", "soil"))) %>% 
+  ggplot(aes(topography, ratio, fill = paste(hydric_year, season))) +
   geom_boxplot() +
   facet_wrap(~ type, nrow = 3) +
   theme_bw() +
   coord_flip() +
   ylab("Mean Amplitude ratio for period 24") +
-  xlab("")
+  xlab("") +
+  scale_fill_discrete("Seasons")
 ```
 
 ## Spatial descriptors
@@ -349,7 +425,8 @@ pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   summarise(pad = sum(pad))
 ratios %>% 
   left_join(pad) %>% 
-  ggplot(aes(pad, ratio, col = season)) +
+  na.omit() %>% 
+  ggplot(aes(pad, ratio, col = paste(hydric_year, season))) +
   geom_point() +
   theme_bw() +
   geom_smooth(method = "lm") +
@@ -357,7 +434,8 @@ ratios %>%
   theme(legend.position = "bottom") +
   xlab("Plant Area Index") +
   ylab("Mean Amplitude ratio for period 24") +
-  facet_wrap(~ type)
+  facet_wrap(~ type) +
+  scale_color_discrete("Seasons")
 ```
 
 ```{r ratio_pai_strata}
@@ -374,7 +452,8 @@ pad <- read_tsv("data/derived_data/sensors_pad_xy.tsv") %>%
   summarise(pad = sum(pad))
 ratios %>% 
   left_join(pad) %>% 
-  ggplot(aes(pad, ratio, col = season)) +
+  na.omit() %>% 
+  ggplot(aes(pad, ratio, col = paste(hydric_year, season))) +
   geom_point() +
   theme_bw() +
   geom_smooth(method = "lm") +
@@ -382,7 +461,8 @@ ratios %>%
   theme(legend.position = "bottom") +
   xlab("Plant Area Index") +
   ylab("Mean Amplitude ratio for period 24") +
-  facet_grid(strata ~ type)
+  facet_grid(strata ~ type) +
+  scale_color_discrete("Seasons")
 ```
 
 Finally, the buffer ratio moderately correlated to the topographic wetness index with stronger buffer in bottomlands as suggested by qualitative analyses. 💡 However, topography correlates with soil water content, chemistry and pedology that should be investigated as well.
@@ -397,7 +477,8 @@ topo <- read_tsv("data/derived_data/coords.tsv") %>%
   select(id, twi)
 ratios %>% 
   left_join(topo) %>% 
-  ggplot(aes(twi, ratio, col = season)) +
+  na.omit() %>% 
+  ggplot(aes(twi, ratio, col = paste(hydric_year, season))) +
   geom_point() +
   theme_bw() +
   geom_smooth(method = "lm") +
@@ -405,7 +486,57 @@ ratios %>%
   theme(legend.position = "bottom") +
   xlab("Topographic Wetness Index") +
   ylab("Mean Amplitude ratio for period 24") +
-  facet_wrap(~ type)
+  facet_wrap(~ type) +
+  scale_color_discrete("Seasons")
+```
+
+## Summary
+
+```{r}
+#| message: false
+#| warning: false
+model <- ratios %>% 
+  filter(type == "air") %>% 
+  left_join(pad) %>% 
+  left_join(topo) %>% 
+  mutate(season = factor(season, levels = c("wet", "dry"))) %>% 
+  mutate(hydric_year = recode(hydric_year, 
+                              "2024-2025" = "normal", 
+                              "2023-2024" = "El Nino")) %>% 
+  mutate(hydric_year = factor(hydric_year, levels = c("normal", "El Nino"))) %>% 
+  mutate(across(c("twi", "pad"), scale)) %>% 
+  lm(ratio ~ season*hydric_year + twi + strata:pad, data = .)
+sjPlot::tab_model(model)
+```
+
+```{r}
+marginaleffects::plot_predictions(model, condition = c("twi", "season", "hydric_year")) +
+  theme_bw()
+```
+
+```{r}
+marginaleffects::plot_predictions(model, condition = c("pad", "strata")) +
+  theme_bw()
+```
+
+```{r}
+#| message: false
+#| warning: false
+model_all <- ratios %>% 
+  left_join(pad) %>% 
+  left_join(topo) %>% 
+  mutate(season = factor(season, levels = c("wet", "dry"))) %>% 
+  mutate(hydric_year = recode(hydric_year, 
+                              "2024-2025" = "normal", 
+                              "2023-2024" = "El Nino")) %>% 
+  mutate(hydric_year = factor(hydric_year, levels = c("normal", "El Nino"))) %>% 
+  mutate(across(c("twi", "pad"), scale)) %>% 
+  group_by(type) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~ lm(ratio ~ season*hydric_year + twi + strata:pad, data = .x))
+  )
+sjPlot::tab_model(model_all$model, dv.labels = model_all$type)
 ```
 
 ## Temporal descriptors
@@ -436,11 +567,10 @@ temp <- read_tsv("data/derived_data/fc_all.tsv") %>%
   filter(period == 24) %>% 
   mutate(ratio = power/power_era) %>% 
   filter(type == "air") %>% 
-  mutate(season = ifelse(month(date) %in% 8:11, "dry", "wet")) %>% 
   left_join(guyaflux) %>% 
   filter(!is.na(variable))
 ggplot(temp, aes(value, ratio)) +
-  geom_point(alpha = .1, aes(col = season)) +
+  geom_point(alpha = .1, aes(col = paste(hydric_year, season))) +
   facet_wrap(~ variable, scales = "free", nrow = 2) +
   theme_bw() +
   ggpubr::stat_regline_equation(
@@ -457,7 +587,7 @@ ggplot(temp, aes(value, ratio)) +
 temp %>% 
   pivot_wider(names_from = variable, values_from = value) %>% 
   filter(!is.infinite(pr)) %>% 
-  mutate(across(c("ratio", "hr_55", "snet", "pr", "swc_0.8"), scale)) %>% 
+  mutate(across(c("hr_55", "snet", "pr", "swc_0.8"), scale)) %>% 
   lm(ratio ~ season + hr_55 + snet + pr + swc_0.8, data = .) %>% 
   sjPlot::tab_model()
 ```
@@ -487,7 +617,7 @@ temp %>%
   filter(!is.infinite(pr)) %>% 
   left_join(topo) %>% 
   left_join(filter(pad, strata == "understory")) %>% 
-  mutate(across(c("ratio", "hr_55", "snet", "pr", "swc_0.8", "twi", "pad"), scale)) %>% 
+  mutate(across(c("hr_55", "snet", "pr", "swc_0.8", "twi", "pad"), scale)) %>% 
   lm(ratio ~ season + hr_55 + snet + pr + swc_0.8 + twi + pad, data = .) %>% 
   sjPlot::tab_model()
 ```

@@ -7,7 +7,7 @@ import xarray as xr
 
 # Paracou
 ee.Initialize(project="ee-sylvainmschmitt", opt_url='https://earthengine-highvolume.googleapis.com')
-ic = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filter(ee.Filter.date('2023-01-01', '2025-01-02'))
+ic = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filter(ee.Filter.date('2023-03-01', '2025-10-30'))
 pt = ee.Geometry.Point(-52.92486, 5.27877)
 ds = xr.open_mfdataset([ic], 
                        engine='ee', 
@@ -22,7 +22,7 @@ ds_df.to_csv("era5.tsv", sep="\t", index=True)
 
 # Weather station Kourou CSG
 ee.Initialize(project="ee-sylvainmschmitt", opt_url='https://earthengine-highvolume.googleapis.com')
-ic = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filter(ee.Filter.date('2020-01-01', '2026-01-01'))
+ic = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY").filter(ee.Filter.date('2023-03-01', '2025-10-30'))
 pt = ee.Geometry.Point(-52.75, 5.25)
 ds = xr.open_mfdataset([ic], 
                        engine='ee', 

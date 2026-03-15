@@ -95,6 +95,36 @@ read_tsv("data/derived_data/tomst.tsv") %>%
   theme(axis.title = element_blank())
 ```
 
+## Guyaclim
+
+```{r guyaclim}
+#| message: false
+#| warning: false
+read_tsv("data/raw_data/micro/test_sensor-project.tsv") %>% 
+  select(-comment, -defect, -field) %>% 
+  filter(date >= as_datetime("2023-04-01 00:00:00")) %>% 
+  filter(id == 1) %>% 
+  gather(variable, value, -sensornum, -date, -id) %>% 
+  ggplot(aes(date, value)) +
+  geom_rect(xmin = as_datetime("2023-8-1 00:00:00"), 
+            xmax = as_datetime("2023-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
+  geom_rect(xmin = as_datetime("2024-8-1 00:00:00"), 
+            xmax = as_datetime("2024-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
+  geom_rect(xmin = as_datetime("2025-8-1 00:00:00"), 
+            xmax = as_datetime("2025-12-1 00:00:00"), 
+            ymin = -Inf, ymax = Inf, alpha = 0.5, fill  = "#fff4e0") +
+  geom_vline(xintercept = c(as_datetime("2023-8-1 00:00:00"),
+                            as_datetime("2024-8-1 00:00:00"),
+                            as_datetime("2025-8-1 00:00:00")),
+             linetype = "dashed", col = "red") +
+  geom_line() +
+  facet_wrap(~ variable, scales = "free_y") +
+  theme_bw() +
+  theme(axis.title = element_blank())
+```
+
 ## Dictionnary
 
 Tomst ancillary informations variables:
