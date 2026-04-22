@@ -119,7 +119,7 @@ g_day <- weather %>%
 cowplot::plot_grid(g_month, g_day)
 ```
 
-## Debiaising Fourier
+## Debiaising Fourier - CSG
 
 The problem with the debiasing of @hes2025 is that it depends on the time-frequency used. We therefore also attempted debiasing using the relationship between the Fourier coefficients after decomposition. We will use the full time series for the Fourier transform, but missing data cannot be allowed for. Our focus will be on the microclimate study years of 2023 and 2024. The weather station data only miss nine measurements on six different days; we will therefore simply fill these in using local linear interpolation. This gives us 365 and 366 days, multiplied by 24 hours (as 2024 is a leap year). This produced a very large power spectrum over two years, with most power at periods of 0, 24 hours, 12 hours and their harmonics, as well as between periods of two years and one day. Looking at the ratio of power between ERA and the weather station, we can see that, as the frequency increases, the ERA power is smaller than that observed. This is logical given that a reanalysis is expected to smooth out small temporal variations. Nonetheless, even at low frequencies and long periods above the day (24-hour period), the power of the weather station tends to be higher than the power of the ERA5-Land reanalysis. We can use this computed ratio for the Kourou CSG station to interpolate the debiased ERA5-Land back at the Paracou station for the years 2023 and 2024.
 
@@ -150,6 +150,24 @@ join %>%
   theme_bw() +
   xlab("") +
   ylab("Temperature [°C]") 
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| fig-cap: "Caption."
+join %>% 
+  filter(time < as_datetime("2023-04-07 23:00:00")) %>% 
+  ungroup() %>% 
+  ggplot(aes(time)) +
+  geom_line(aes(y = tas_era, col = "ERA5-Land")) +
+  geom_line(aes(y = tas_station, col = "MeteoFrance weather station")) +
+  theme_bw() +
+  xlab("") + 
+  ylab("Temperature [°C]") +
+  ggtitle("Centre Spatial Guyanais (CSG)") +
+  theme(legend.position = "bottom") +
+  scale_color_discrete("")
 ```
 
 ```{r ps}
@@ -223,7 +241,7 @@ ratios %>%
   )
 ```
 
-## Reconstruction at Paracou
+## Debiaising Fourier - Paracou
 
 Using adjustment values between Fourier coefficients of the weather station and ERA5-Land we can then de-bias ERA5-Land at the Paracou station. This resulted in higher predicted variation of temperature than the one smoothed by ERA5-Land reanalysis. However note that the extremes might be a bit exaggerated.
 
@@ -238,8 +256,8 @@ fc_cor <- fft_tab(era$tas, 24*duration) %>%
   left_join(select(ratios, frequency, period, ratio)) %>% 
   mutate(coefficient_c = coefficient*ratio)
 era$tas_corf <- fft_reconstruct(
-  f = fc_cor$coefficient_c,
-  freq = fc_cor$frequency[-1], 
+  c = fc_cor$coefficient_c,
+  f = fc_cor$frequency[-1], 
   time = (1:(24*duration))-1
 )
 era %>% 
@@ -268,8 +286,8 @@ era <- read_tsv("data/raw_data/macro/era5.tsv") %>%
   mutate(tas_cor = (tas-b)/a) %>% 
   rename(raw = tas, hes2025 = tas_cor) 
 era$Fourier <- fft_reconstruct(
-  f = fc_cor$coefficient_c,
-  freq = fc_cor$frequency[-1], 
+  c = fc_cor$coefficient_c,
+  f = fc_cor$frequency[-1], 
   time = (1:(24*duration))-1
 )
 era <- era %>% 
